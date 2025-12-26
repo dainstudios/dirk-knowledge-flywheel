@@ -156,8 +156,14 @@ export type Database = {
           pdf_storage_path: string | null
           processed_at: string | null
           publication_date: string | null
+          queued_for_linkedin: boolean | null
+          queued_for_linkedin_at: string | null
+          queued_for_newsletter: boolean | null
+          queued_for_newsletter_at: string | null
           quotables: string[] | null
           service_lines: string[] | null
+          shared_to_team: boolean | null
+          shared_to_team_at: string | null
           source_credibility: string | null
           status: string
           summary: string | null
@@ -195,8 +201,14 @@ export type Database = {
           pdf_storage_path?: string | null
           processed_at?: string | null
           publication_date?: string | null
+          queued_for_linkedin?: boolean | null
+          queued_for_linkedin_at?: string | null
+          queued_for_newsletter?: boolean | null
+          queued_for_newsletter_at?: string | null
           quotables?: string[] | null
           service_lines?: string[] | null
+          shared_to_team?: boolean | null
+          shared_to_team_at?: string | null
           source_credibility?: string | null
           status?: string
           summary?: string | null
@@ -234,8 +246,14 @@ export type Database = {
           pdf_storage_path?: string | null
           processed_at?: string | null
           publication_date?: string | null
+          queued_for_linkedin?: boolean | null
+          queued_for_linkedin_at?: string | null
+          queued_for_newsletter?: boolean | null
+          queued_for_newsletter_at?: string | null
           quotables?: string[] | null
           service_lines?: string[] | null
+          shared_to_team?: boolean | null
+          shared_to_team_at?: string | null
           source_credibility?: string | null
           status?: string
           summary?: string | null
