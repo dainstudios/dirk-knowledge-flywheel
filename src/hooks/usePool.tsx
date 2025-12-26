@@ -46,6 +46,11 @@ export interface ProcessActionResponse {
   message: string;
 }
 
+export interface PostToSlackResponse {
+  success: boolean;
+  item_id: string;
+}
+
 export function usePool() {
   const queryClient = useQueryClient();
 
@@ -123,6 +128,35 @@ export function usePool() {
     },
   });
 
+  // Post to Slack mutation
+  const postToSlack = useMutation({
+    mutationFn: async (itemId: string): Promise<PostToSlackResponse> => {
+      const { data, error } = await supabase.functions.invoke('post-to-slack', {
+        body: { item_id: itemId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as PostToSlackResponse;
+    },
+    onMutate: async (itemId) => {
+      await queryClient.cancelQueries({ queryKey: ['pool-items'] });
+      const previousItems = queryClient.getQueryData<PoolItem[]>(['pool-items']);
+      queryClient.setQueryData<PoolItem[]>(['pool-items'], (old) =>
+        old?.filter((item) => item.id !== itemId) ?? []
+      );
+      return { previousItems };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousItems) {
+        queryClient.setQueryData(['pool-items'], context.previousItems);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-stats'] });
+    },
+  });
+
   return {
     items: query.data ?? [],
     isLoading: query.isLoading,
@@ -131,5 +165,7 @@ export function usePool() {
     isCurating: curateItem.isPending,
     processAction: processAction.mutate,
     isProcessing: processAction.isPending,
+    postToSlack: postToSlack.mutate,
+    isPostingToSlack: postToSlack.isPending,
   };
 }

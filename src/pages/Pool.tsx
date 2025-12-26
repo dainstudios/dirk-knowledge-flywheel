@@ -190,17 +190,52 @@ function parseSummaryBullets(summary: string): string[] | null {
 }
 
 export default function Pool() {
-  const { items, isLoading, processAction, isProcessing } = usePool();
+  const { items, isLoading, processAction, isProcessing, postToSlack, isPostingToSlack } = usePool();
   const { toast } = useToast();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedActions, setSelectedActions] = useState<Set<SelectableAction>>(new Set());
+  const [postingTeamItemId, setPostingTeamItemId] = useState<string | null>(null);
 
   const currentItem = items[currentIndex];
   const totalItems = items.length;
 
+  // Handle Team button click - posts to Slack immediately
+  const handleTeamClick = () => {
+    if (!currentItem || isPostingToSlack) return;
+
+    setPostingTeamItemId(currentItem.id);
+    setExitingId(currentItem.id);
+
+    postToSlack(currentItem.id, {
+      onSuccess: () => {
+        toast({ description: 'Shared to Team!' });
+        setPostingTeamItemId(null);
+        setExitingId(null);
+        setSelectedActions(new Set());
+        if (currentIndex >= items.length - 1 && currentIndex > 0) {
+          setCurrentIndex(currentIndex - 1);
+        }
+      },
+      onError: () => {
+        toast({ 
+          description: 'Failed to share',
+          variant: 'destructive' 
+        });
+        setPostingTeamItemId(null);
+        setExitingId(null);
+      },
+    });
+  };
+
   // Toggle action selection with multi-select logic
   const toggleAction = (action: SelectableAction) => {
+    // If clicking Team, handle separately
+    if (action === 'post2team') {
+      handleTeamClick();
+      return;
+    }
+
     setSelectedActions(prev => {
       const newSet = new Set(prev);
       
@@ -478,19 +513,25 @@ export default function Pool() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {actionOptions.map(({ action, icon: Icon, label, selectedColor }) => {
                       const isSelected = selectedActions.has(action);
+                      const isTeamLoading = action === 'post2team' && postingTeamItemId === currentItem.id;
+                      const isDisabled = isProcessing || isTeamLoading;
+                      
                       return (
                         <button
                           key={action}
                           onClick={() => toggleAction(action)}
-                          disabled={isProcessing}
+                          disabled={isDisabled}
                           className={cn(
                             'inline-flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
                             isSelected
                               ? selectedColor
-                              : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/50'
+                              : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/50',
+                            isDisabled && 'opacity-50 cursor-not-allowed'
                           )}
                         >
-                          {isSelected ? (
+                          {isTeamLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isSelected ? (
                             <Check className="h-4 w-4" />
                           ) : (
                             <Icon className="h-4 w-4" />
@@ -531,19 +572,25 @@ export default function Pool() {
           <div className="flex items-center gap-2 flex-wrap justify-center">
             {actionOptions.map(({ action, icon: Icon, label, selectedColor }) => {
               const isSelected = selectedActions.has(action);
+              const isTeamLoading = action === 'post2team' && postingTeamItemId === currentItem.id;
+              const isDisabled = isProcessing || isTeamLoading;
+              
               return (
                 <button
                   key={action}
                   onClick={() => toggleAction(action)}
-                  disabled={isProcessing}
+                  disabled={isDisabled}
                   className={cn(
                     'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 transition-all text-xs font-medium',
                     isSelected
                       ? selectedColor
-                      : 'border-border bg-background text-muted-foreground'
+                      : 'border-border bg-background text-muted-foreground',
+                    isDisabled && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isSelected ? (
+                  {isTeamLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : isSelected ? (
                     <Check className="h-3.5 w-3.5" />
                   ) : (
                     <Icon className="h-3.5 w-3.5" />
