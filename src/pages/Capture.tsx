@@ -160,14 +160,14 @@ export default function Capture() {
         <Card>
           <CardContent className="pt-6">
             <Tabs defaultValue="url" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="url" className="flex items-center gap-2">
+              <TabsList className="w-full flex mb-6">
+                <TabsTrigger value="url" className="flex-1 flex items-center justify-center gap-2">
                   <LinkIcon className="h-4 w-4" />
                   URL
                 </TabsTrigger>
-                <TabsTrigger value="pdf" className="flex items-center gap-2">
+                <TabsTrigger value="pdf" className="flex-1 flex items-center justify-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Upload PDF
+                  PDF Upload
                 </TabsTrigger>
               </TabsList>
 
