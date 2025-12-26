@@ -1,1 +1,4 @@
 project_id = "wcdtdjztzrlvwkmlwpgw"
+
+[functions.generate-search-embedding]
+verify_jwt = true
