@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           actionability: string | null
           author: string | null
+          author_organization: string | null
           business_functions: string[] | null
           capture_source: string
           content: string | null
@@ -33,6 +34,7 @@ export type Database = {
           google_drive_url: string | null
           id: string
           industries: string[] | null
+          methodology: string | null
           pdf_data: string | null
           pdf_filename: string | null
           pdf_storage_path: string | null
@@ -55,6 +57,7 @@ export type Database = {
         Insert: {
           actionability?: string | null
           author?: string | null
+          author_organization?: string | null
           business_functions?: string[] | null
           capture_source?: string
           content?: string | null
@@ -70,6 +73,7 @@ export type Database = {
           google_drive_url?: string | null
           id?: string
           industries?: string[] | null
+          methodology?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
           pdf_storage_path?: string | null
@@ -92,6 +96,7 @@ export type Database = {
         Update: {
           actionability?: string | null
           author?: string | null
+          author_organization?: string | null
           business_functions?: string[] | null
           capture_source?: string
           content?: string | null
@@ -107,6 +112,7 @@ export type Database = {
           google_drive_url?: string | null
           id?: string
           industries?: string[] | null
+          methodology?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
           pdf_storage_path?: string | null
