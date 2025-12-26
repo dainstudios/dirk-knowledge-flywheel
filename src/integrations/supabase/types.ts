@@ -31,6 +31,9 @@ export type Database = {
           fts: unknown
           id: string
           industries: string[] | null
+          pdf_data: string | null
+          pdf_filename: string | null
+          pdf_storage_path: string | null
           processed_at: string | null
           publication_date: string | null
           quotables: string[] | null
@@ -63,6 +66,9 @@ export type Database = {
           fts?: unknown
           id?: string
           industries?: string[] | null
+          pdf_data?: string | null
+          pdf_filename?: string | null
+          pdf_storage_path?: string | null
           processed_at?: string | null
           publication_date?: string | null
           quotables?: string[] | null
@@ -95,6 +101,9 @@ export type Database = {
           fts?: unknown
           id?: string
           industries?: string[] | null
+          pdf_data?: string | null
+          pdf_filename?: string | null
+          pdf_storage_path?: string | null
           processed_at?: string | null
           publication_date?: string | null
           quotables?: string[] | null
