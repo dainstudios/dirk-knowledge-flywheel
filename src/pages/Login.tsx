@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { Mail, Loader2, CheckCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,18 @@ const emailSchema = z.string().email('Please enter a valid email address');
 
 export default function Login() {
   const { user, loading, signInWithMagicLink } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Redirect if already authenticated
-  if (!loading && user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [loading, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
