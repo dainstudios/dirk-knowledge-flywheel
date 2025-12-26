@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.ask-knowledge]
 verify_jwt = true
+
+[functions.find-quote]
+verify_jwt = true
