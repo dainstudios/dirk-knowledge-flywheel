@@ -11,7 +11,8 @@ import {
   PlusCircle,
   ExternalLink,
   Loader2,
-  Quote
+  Quote,
+  FileText
 } from 'lucide-react';
 import { Header, MobileNav } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
@@ -234,24 +235,37 @@ export default function Pool() {
               <CardContent className="p-0">
                 {/* Header Section */}
                 <div className="p-5 border-b border-border/50">
-                  {/* Title - clickable if URL exists */}
-                  {currentItem.url ? (
-                    <a 
-                      href={currentItem.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group"
-                    >
-                      <h2 className="text-xl font-bold text-foreground leading-tight mb-3 group-hover:text-primary transition-colors flex items-start gap-2">
-                        {currentItem.title}
-                        <ExternalLink className="h-4 w-4 mt-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                      </h2>
-                    </a>
-                  ) : (
-                    <h2 className="text-xl font-bold text-foreground leading-tight mb-3">
-                      {currentItem.title}
-                    </h2>
-                  )}
+                  {/* Title */}
+                  <h2 className="text-xl font-bold text-foreground leading-tight mb-3">
+                    {currentItem.title}
+                  </h2>
+                  
+                  {/* Source Links */}
+                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                    {currentItem.google_drive_url && (
+                      <a 
+                        href={currentItem.google_drive_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <FileText className="h-4 w-4" />
+                        View PDF
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                    {currentItem.url && (
+                      <a 
+                        href={currentItem.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        View Source
+                      </a>
+                    )}
+                  </div>
                   
                   {/* Badges row */}
                   <div className="flex flex-wrap items-center gap-2">
