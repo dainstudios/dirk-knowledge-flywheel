@@ -29,6 +29,8 @@ export type Database = {
           embedding: string | null
           fast_track: boolean | null
           fts: unknown
+          google_drive_id: string | null
+          google_drive_url: string | null
           id: string
           industries: string[] | null
           pdf_data: string | null
@@ -64,6 +66,8 @@ export type Database = {
           embedding?: string | null
           fast_track?: boolean | null
           fts?: unknown
+          google_drive_id?: string | null
+          google_drive_url?: string | null
           id?: string
           industries?: string[] | null
           pdf_data?: string | null
@@ -99,6 +103,8 @@ export type Database = {
           embedding?: string | null
           fast_track?: boolean | null
           fts?: unknown
+          google_drive_id?: string | null
+          google_drive_url?: string | null
           id?: string
           industries?: string[] | null
           pdf_data?: string | null
