@@ -12,7 +12,8 @@ import {
   ExternalLink,
   Loader2,
   Quote,
-  FileText
+  FileText,
+  FlaskConical
 } from 'lucide-react';
 import { Header, MobileNav } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
@@ -250,14 +251,14 @@ export default function Pool() {
                     {currentItem.title}
                   </h2>
                   
-                  {/* Author/Source line */}
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {currentItem.author ? (
-                      <>By {currentItem.author}{currentItem.url ? ` • ${extractDomain(currentItem.url)}` : ''}</>
-                    ) : currentItem.url ? (
-                      extractDomain(currentItem.url)
-                    ) : null}
-                  </p>
+                  {/* Author/Organization line */}
+                  {(currentItem.author || currentItem.author_organization) && (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      By {currentItem.author && currentItem.author_organization
+                        ? `${currentItem.author} • ${currentItem.author_organization}`
+                        : currentItem.author_organization || currentItem.author}
+                    </p>
+                  )}
                   
                   {/* Source Links */}
                   <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -325,6 +326,19 @@ export default function Pool() {
                     </p>
                   )}
                 </div>
+
+                {/* Study Methodology Section (for Research Reports) */}
+                {currentItem.methodology && (
+                  <div className="px-5 py-4 border-b border-border/50 bg-blue-50/50 dark:bg-blue-950/20">
+                    <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      Study Methodology
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {currentItem.methodology}
+                    </p>
+                  </div>
+                )}
 
                 {/* User Notes */}
                 {currentItem.user_notes && (
