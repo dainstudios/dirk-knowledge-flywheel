@@ -134,6 +134,59 @@ export type Database = {
         }
         Relationships: []
       }
+      quotes: {
+        Row: {
+          created_at: string | null
+          embedding: string | null
+          id: string
+          knowledge_item_id: string | null
+          quote_text: string
+          source_author: string | null
+          source_title: string | null
+          source_url: string | null
+          tone: string | null
+          topic_tags: string[] | null
+          use_cases: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          knowledge_item_id?: string | null
+          quote_text: string
+          source_author?: string | null
+          source_title?: string | null
+          source_url?: string | null
+          tone?: string | null
+          topic_tags?: string[] | null
+          use_cases?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          knowledge_item_id?: string | null
+          quote_text?: string
+          source_author?: string | null
+          source_title?: string | null
+          source_url?: string | null
+          tone?: string | null
+          topic_tags?: string[] | null
+          use_cases?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_knowledge_item_id_fkey"
+            columns: ["knowledge_item_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -188,6 +241,25 @@ export type Database = {
           summary: string
           title: string
           url: string
+        }[]
+      }
+      match_quotes: {
+        Args: {
+          filter_user_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          quote_text: string
+          similarity: number
+          source_author: string
+          source_title: string
+          source_url: string
+          tone: string
+          topic_tags: string[]
+          use_cases: string[]
         }[]
       }
       normalize_url: { Args: { raw_url: string }; Returns: string }
