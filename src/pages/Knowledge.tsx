@@ -9,6 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   FileText,
   ExternalLink,
@@ -22,6 +29,9 @@ import {
   MessageSquare,
   Loader2,
   CheckCircle,
+  Copy,
+  Check,
+  Zap,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -30,6 +40,7 @@ import {
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 // Reuse helper from Pool
 function parseSummaryBullets(summary: string): string[] | null {
@@ -366,12 +377,133 @@ interface AskResponse {
   };
 }
 
+// Quote result interface
+interface QuoteResult {
+  id: string;
+  quote_text: string;
+  source_title: string | null;
+  source_author: string | null;
+  source_url: string | null;
+  topic_tags: string[];
+  use_cases: string[];
+  tone: string | null;
+  similarity: number;
+}
+
+interface QuoteResponse {
+  quotes: QuoteResult[];
+  stats: {
+    from_quotes_table: number;
+    from_quotables: number;
+  };
+}
+
+// Quote card component
+function QuoteCard({ quote }: { quote: QuoteResult }) {
+  const [copied, setCopied] = useState<'quote' | 'attributed' | null>(null);
+
+  const copyQuote = async () => {
+    await navigator.clipboard.writeText(`"${quote.quote_text}"`);
+    setCopied('quote');
+    toast.success('Quote copied to clipboard');
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const copyWithAttribution = async () => {
+    const attribution = quote.source_author 
+      ? `"${quote.quote_text}"\n— ${quote.source_title || 'Unknown'}, ${quote.source_author}`
+      : `"${quote.quote_text}"\n— ${quote.source_title || 'Unknown Source'}`;
+    await navigator.clipboard.writeText(attribution);
+    setCopied('attributed');
+    toast.success('Quote with attribution copied');
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  return (
+    <Card className="p-5 border-l-4 border-l-primary hover:shadow-md transition-shadow">
+      {/* Quote text */}
+      <blockquote className="text-lg italic text-foreground leading-relaxed mb-4">
+        <span className="text-primary text-2xl font-serif">"</span>
+        {quote.quote_text}
+        <span className="text-primary text-2xl font-serif">"</span>
+      </blockquote>
+
+      {/* Source line */}
+      <p className="text-sm text-muted-foreground mb-3">
+        — {quote.source_url ? (
+          <a 
+            href={quote.source_url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            {quote.source_title || 'Source'}
+          </a>
+        ) : (
+          quote.source_title || 'Unknown Source'
+        )}
+        {quote.source_author && `, ${quote.source_author}`}
+      </p>
+
+      {/* Topic tags and match percentage */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <Badge 
+          variant="outline" 
+          className="bg-primary/10 text-primary border-primary/30 text-xs"
+        >
+          {Math.round(quote.similarity * 100)}% match
+        </Badge>
+        {quote.topic_tags.slice(0, 3).map((tag, i) => (
+          <Badge key={i} variant="secondary" className="text-xs">
+            {tag}
+          </Badge>
+        ))}
+        {quote.tone && (
+          <Badge variant="outline" className="text-xs">
+            {quote.tone}
+          </Badge>
+        )}
+      </div>
+
+      {/* Copy buttons */}
+      <div className="flex gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={copyQuote}
+          className="gap-2"
+        >
+          {copied === 'quote' ? (
+            <Check className="h-3 w-3 text-green-600" />
+          ) : (
+            <Copy className="h-3 w-3" />
+          )}
+          Copy
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={copyWithAttribution}
+          className="gap-2"
+        >
+          {copied === 'attributed' ? (
+            <Check className="h-3 w-3 text-green-600" />
+          ) : (
+            <Copy className="h-3 w-3" />
+          )}
+          Copy with Attribution
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 // Main page
 export default function Knowledge() {
   const { items, isLoading, filterOptions } = useKnowledgeBase();
   
-  // Mode toggle: 'search' or 'ask'
-  const [mode, setMode] = useState<'search' | 'ask'>('search');
+  // Mode toggle: 'search', 'ask', 'deep', or 'quote'
+  const [mode, setMode] = useState<'search' | 'ask' | 'deep' | 'quote'>('search');
   
   // Search mode state
   const [searchQuery, setSearchQuery] = useState('');
@@ -389,10 +521,16 @@ export default function Knowledge() {
 
   // Ask AI mode state
   const [askQuery, setAskQuery] = useState('');
-  const [askMode, setAskMode] = useState<'standard' | 'deep'>('standard');
   const [isAsking, setIsAsking] = useState(false);
   const [askResponse, setAskResponse] = useState<AskResponse | null>(null);
   const [askError, setAskError] = useState<string | null>(null);
+
+  // Quote finder state
+  const [quoteQuery, setQuoteQuery] = useState('');
+  const [quoteContext, setQuoteContext] = useState<string>('any');
+  const [isFindingQuotes, setIsFindingQuotes] = useState(false);
+  const [quoteResponse, setQuoteResponse] = useState<QuoteResponse | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   // Toggle filter value
   const toggleFilter = (key: keyof KnowledgeFilters, value: string) => {
@@ -472,6 +610,7 @@ export default function Knowledge() {
     setAskResponse(null);
 
     try {
+      const askMode = mode === 'deep' ? 'deep' : 'standard';
       const { data, error } = await supabase.functions.invoke('ask-knowledge', {
         body: { question: askQuery.trim(), mode: askMode },
       });
@@ -495,6 +634,39 @@ export default function Knowledge() {
     setAskError(null);
   };
 
+  // Find quotes
+  const handleFindQuotes = async () => {
+    if (!quoteQuery.trim()) return;
+
+    setIsFindingQuotes(true);
+    setQuoteError(null);
+    setQuoteResponse(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('find-quote', {
+        body: { query: quoteQuery.trim(), context: quoteContext, count: 5 },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setQuoteResponse(data);
+    } catch (error) {
+      console.error('Find quotes error:', error);
+      setQuoteError(error instanceof Error ? error.message : 'Failed to find quotes');
+    } finally {
+      setIsFindingQuotes(false);
+    }
+  };
+
+  // Clear quotes
+  const clearQuotes = () => {
+    setQuoteQuery('');
+    setQuoteResponse(null);
+    setQuoteError(null);
+    setQuoteContext('any');
+  };
+
   // Apply filters to items
   const displayItems = useMemo(() => {
     const baseItems = searchResults ?? items;
@@ -505,6 +677,13 @@ export default function Knowledge() {
   // Paginated items
   const paginatedItems = displayItems.slice(0, page * itemsPerPage);
   const hasMore = paginatedItems.length < displayItems.length;
+
+  // Mode descriptions
+  const modeDescriptions = {
+    ask: 'Get comprehensive answers with citations from your top sources',
+    deep: 'Analyze more documents for complex questions',
+    quote: 'Find quotable insights for decks, LinkedIn posts, and client conversations',
+  };
 
   if (isLoading) {
     return (
@@ -532,7 +711,7 @@ export default function Knowledge() {
           </div>
 
           {/* Mode Toggle */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <Button
               variant={mode === 'search' ? 'default' : 'outline'}
               size="sm"
@@ -551,7 +730,32 @@ export default function Knowledge() {
               <MessageSquare className="h-4 w-4" />
               Ask AI
             </Button>
+            <Button
+              variant={mode === 'deep' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setMode('deep')}
+              className="gap-2"
+            >
+              <Zap className="h-4 w-4" />
+              Deep Search
+            </Button>
+            <Button
+              variant={mode === 'quote' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setMode('quote')}
+              className="gap-2"
+            >
+              <Quote className="h-4 w-4" />
+              Find Quote
+            </Button>
           </div>
+
+          {/* Mode description */}
+          {(mode === 'ask' || mode === 'deep' || mode === 'quote') && (
+            <p className="text-sm text-muted-foreground mb-4">
+              {modeDescriptions[mode]}
+            </p>
+          )}
 
           {/* Search Mode */}
           {mode === 'search' && (
@@ -580,8 +784,8 @@ export default function Knowledge() {
             </div>
           )}
 
-          {/* Ask AI Mode */}
-          {mode === 'ask' && (
+          {/* Ask AI / Deep Search Mode */}
+          {(mode === 'ask' || mode === 'deep') && (
             <div className="space-y-4">
               <Textarea
                 placeholder="Ask a question about your knowledge..."
@@ -590,31 +794,6 @@ export default function Knowledge() {
                 rows={3}
                 className="resize-none"
               />
-              
-              {/* Mode selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex gap-2">
-                  <Button
-                    variant={askMode === 'standard' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setAskMode('standard')}
-                  >
-                    Standard
-                  </Button>
-                  <Button
-                    variant={askMode === 'deep' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setAskMode('deep')}
-                  >
-                    Deep Search
-                  </Button>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {askMode === 'standard' 
-                    ? 'Uses top 3 sources in detail'
-                    : 'Analyzes 30+ sources for comprehensive answers'}
-                </span>
-              </div>
 
               <div className="flex gap-2">
                 <Button 
@@ -630,7 +809,7 @@ export default function Knowledge() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      Ask Knowledge Base
+                      {mode === 'deep' ? 'Deep Search' : 'Ask Knowledge Base'}
                     </>
                   )}
                 </Button>
@@ -642,27 +821,82 @@ export default function Knowledge() {
               </div>
             </div>
           )}
+
+          {/* Find Quote Mode */}
+          {mode === 'quote' && (
+            <div className="space-y-4">
+              <Input
+                placeholder="Find a quote about... (e.g., AI ROI, data governance, change management)"
+                value={quoteQuery}
+                onChange={(e) => setQuoteQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleFindQuotes()}
+              />
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">For use in:</span>
+                  <Select value={quoteContext} onValueChange={setQuoteContext}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Any context" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any</SelectItem>
+                      <SelectItem value="board">Board Presentation</SelectItem>
+                      <SelectItem value="linkedin">LinkedIn Post</SelectItem>
+                      <SelectItem value="pitch">Client Pitch</SelectItem>
+                      <SelectItem value="workshop">Workshop Opening</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleFindQuotes} 
+                  disabled={isFindingQuotes || !quoteQuery.trim()}
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                >
+                  {isFindingQuotes ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Finding...
+                    </>
+                  ) : (
+                    <>
+                      <Quote className="h-4 w-4" />
+                      Find Quotes
+                    </>
+                  )}
+                </Button>
+                {(quoteResponse || quoteQuery) && (
+                  <Button variant="outline" onClick={clearQuotes}>
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Ask AI Loading State */}
-        {mode === 'ask' && isAsking && (
+        {/* Ask AI / Deep Search Loading State */}
+        {(mode === 'ask' || mode === 'deep') && isAsking && (
           <Card className="p-8 mb-6">
             <div className="flex flex-col items-center justify-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Searching knowledge base and generating answer...</p>
+              <p className="text-muted-foreground">Searching knowledge and generating answer...</p>
             </div>
           </Card>
         )}
 
-        {/* Ask AI Error State */}
-        {mode === 'ask' && askError && (
+        {/* Ask AI / Deep Search Error State */}
+        {(mode === 'ask' || mode === 'deep') && askError && (
           <Card className="p-6 mb-6 border-destructive/50 bg-destructive/5">
             <p className="text-destructive">{askError}</p>
           </Card>
         )}
 
-        {/* Ask AI Response */}
-        {mode === 'ask' && askResponse && !isAsking && (
+        {/* Ask AI / Deep Search Response */}
+        {(mode === 'ask' || mode === 'deep') && askResponse && !isAsking && (
           <div className="space-y-4 mb-6">
             {/* Answer Card */}
             <Card className="p-6 border-primary/20 bg-primary/5">
@@ -742,6 +976,56 @@ export default function Knowledge() {
                   {askResponse.stats.total_searched} sources searched, {askResponse.stats.with_full_content} with full content analyzed
                 </p>
               </Card>
+            )}
+          </div>
+        )}
+
+        {/* Find Quote Loading State */}
+        {mode === 'quote' && isFindingQuotes && (
+          <Card className="p-8 mb-6">
+            <div className="flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Finding matching quotes...</p>
+            </div>
+          </Card>
+        )}
+
+        {/* Find Quote Error State */}
+        {mode === 'quote' && quoteError && (
+          <Card className="p-6 mb-6 border-destructive/50 bg-destructive/5">
+            <p className="text-destructive">{quoteError}</p>
+          </Card>
+        )}
+
+        {/* Find Quote Results */}
+        {mode === 'quote' && quoteResponse && !isFindingQuotes && (
+          <div className="space-y-4 mb-6">
+            {quoteResponse.quotes.length === 0 ? (
+              <Card className="p-8 text-center">
+                <Quote className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
+                  No matching quotes found
+                </h3>
+                <p className="text-muted-foreground">
+                  Try different keywords or add more content to your knowledge base.
+                </p>
+              </Card>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-foreground">
+                    Found {quoteResponse.quotes.length} quote{quoteResponse.quotes.length !== 1 ? 's' : ''}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {quoteResponse.stats.from_quotes_table} from quotes, {quoteResponse.stats.from_quotables} from knowledge items
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {quoteResponse.quotes.map((quote) => (
+                    <QuoteCard key={quote.id} quote={quote} />
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
