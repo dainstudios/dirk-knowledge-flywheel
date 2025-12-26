@@ -166,23 +166,20 @@ export type Database = {
       }
       match_knowledge: {
         Args: {
-          filter_status?: string[]
+          filter_user_id?: string
           match_count?: number
           match_threshold?: number
           query_embedding: string
         }
         Returns: {
-          actionability: string
           content_type: string
-          created_at: string
           dain_context: string
+          google_drive_url: string
           id: string
           industries: string[]
-          service_lines: string[]
+          quotables: string[]
           similarity: number
-          source_credibility: string
           summary: string
-          technologies: string[]
           title: string
           url: string
         }[]

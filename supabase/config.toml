@@ -2,3 +2,6 @@ project_id = "wcdtdjztzrlvwkmlwpgw"
 
 [functions.generate-search-embedding]
 verify_jwt = true
+
+[functions.ask-knowledge]
+verify_jwt = true
