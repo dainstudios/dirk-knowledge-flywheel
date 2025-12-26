@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Link as LinkIcon, Check, FileText, FolderOpen, Clock, ExternalLink } from 'lucide-react';
 import { z } from 'zod';
 import { Header, MobileNav } from '@/components/common';
@@ -21,7 +21,8 @@ const urlSchema = z.string().trim().url({ message: 'Please enter a valid URL' })
 const MAX_NOTES_LENGTH = 500;
 
 export default function Capture() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const urlInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,12 +70,16 @@ export default function Capture() {
     e.preventDefault();
     
     if (!validateUrl(url)) return;
-    if (!user) {
+    
+    // Re-verify session before making API call
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
       toast({
-        title: 'Not authenticated',
-        description: 'Please log in to capture content.',
+        title: 'Session expired',
+        description: 'Please log in again to continue.',
         variant: 'destructive',
       });
+      navigate('/auth');
       return;
     }
 
@@ -88,7 +93,7 @@ export default function Capture() {
         fast_track: fastTrack,
         status: 'pending',
         capture_source: 'web_ui',
-        user_id: user.id,
+        user_id: session.user.id,
       });
 
       if (error) {
@@ -140,6 +145,15 @@ export default function Capture() {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state while auth is being determined
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
