@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Search,
@@ -18,6 +19,9 @@ import {
   Sparkles,
   Quote,
   Clock,
+  MessageSquare,
+  Loader2,
+  CheckCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -344,9 +348,32 @@ function KnowledgeCard({
   );
 }
 
+// AI Answer source card
+interface AskSource {
+  id: string;
+  title: string;
+  url: string | null;
+  similarity: number;
+  has_full_content: boolean;
+}
+
+interface AskResponse {
+  answer: string;
+  sources: AskSource[];
+  stats: {
+    total_searched: number;
+    with_full_content: number;
+  };
+}
+
 // Main page
 export default function Knowledge() {
   const { items, isLoading, filterOptions } = useKnowledgeBase();
+  
+  // Mode toggle: 'search' or 'ask'
+  const [mode, setMode] = useState<'search' | 'ask'>('search');
+  
+  // Search mode state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<KnowledgeItem[] | null>(null);
@@ -360,6 +387,13 @@ export default function Knowledge() {
   const [page, setPage] = useState(1);
   const itemsPerPage = 20;
 
+  // Ask AI mode state
+  const [askQuery, setAskQuery] = useState('');
+  const [askMode, setAskMode] = useState<'standard' | 'deep'>('standard');
+  const [isAsking, setIsAsking] = useState(false);
+  const [askResponse, setAskResponse] = useState<AskResponse | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
+
   // Toggle filter value
   const toggleFilter = (key: keyof KnowledgeFilters, value: string) => {
     setFilters(prev => ({
@@ -368,7 +402,7 @@ export default function Knowledge() {
         ? prev[key].filter(v => v !== value)
         : [...prev[key], value],
     }));
-    setPage(1); // Reset to first page
+    setPage(1);
   };
 
   // Clear all filters
@@ -394,7 +428,6 @@ export default function Knowledge() {
 
       if (error) throw error;
 
-      // Map search results to KnowledgeItem format
       const results: KnowledgeItem[] = data.results.map((r: any) => ({
         id: r.id,
         title: r.title,
@@ -430,6 +463,38 @@ export default function Knowledge() {
     setSearchResults(null);
   };
 
+  // Ask AI
+  const handleAskAI = async () => {
+    if (!askQuery.trim()) return;
+
+    setIsAsking(true);
+    setAskError(null);
+    setAskResponse(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('ask-knowledge', {
+        body: { question: askQuery.trim(), mode: askMode },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setAskResponse(data);
+    } catch (error) {
+      console.error('Ask AI error:', error);
+      setAskError(error instanceof Error ? error.message : 'Failed to get answer');
+    } finally {
+      setIsAsking(false);
+    }
+  };
+
+  // Clear ask
+  const clearAsk = () => {
+    setAskQuery('');
+    setAskResponse(null);
+    setAskError(null);
+  };
+
   // Apply filters to items
   const displayItems = useMemo(() => {
     const baseItems = searchResults ?? items;
@@ -462,140 +527,334 @@ export default function Knowledge() {
             <BookOpen className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Knowledge Base</h1>
             <Badge variant="secondary" className="text-sm">
-              {displayItems.length} items
+              {items.length} items
             </Badge>
           </div>
 
-          {/* Search */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search your knowledge..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="pl-9 pr-9"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            <Button onClick={handleSearch} disabled={isSearching}>
-              {isSearching ? 'Searching...' : 'Search'}
+          {/* Mode Toggle */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant={mode === 'search' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setMode('search')}
+              className="gap-2"
+            >
+              <Search className="h-4 w-4" />
+              Search
+            </Button>
+            <Button
+              variant={mode === 'ask' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setMode('ask')}
+              className="gap-2"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Ask AI
             </Button>
           </div>
-        </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <FilterDropdown
-            label="Industries"
-            options={filterOptions.industries}
-            selected={filters.industries}
-            onToggle={(v) => toggleFilter('industries', v)}
-          />
-          <FilterDropdown
-            label="Technologies"
-            options={filterOptions.technologies}
-            selected={filters.technologies}
-            onToggle={(v) => toggleFilter('technologies', v)}
-          />
-          <FilterDropdown
-            label="Service Lines"
-            options={filterOptions.serviceLines}
-            selected={filters.serviceLines}
-            onToggle={(v) => toggleFilter('serviceLines', v)}
-          />
-          <FilterDropdown
-            label="Content Type"
-            options={filterOptions.contentTypes}
-            selected={filters.contentTypes}
-            onToggle={(v) => toggleFilter('contentTypes', v)}
-          />
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
-              <X className="h-3 w-3 mr-1" />
-              Clear filters
-            </Button>
+          {/* Search Mode */}
+          {mode === 'search' && (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search your knowledge..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-9 pr-9"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button onClick={handleSearch} disabled={isSearching}>
+                {isSearching ? 'Searching...' : 'Search'}
+              </Button>
+            </div>
+          )}
+
+          {/* Ask AI Mode */}
+          {mode === 'ask' && (
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Ask a question about your knowledge..."
+                value={askQuery}
+                onChange={(e) => setAskQuery(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+              
+              {/* Mode selector */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex gap-2">
+                  <Button
+                    variant={askMode === 'standard' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAskMode('standard')}
+                  >
+                    Standard
+                  </Button>
+                  <Button
+                    variant={askMode === 'deep' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAskMode('deep')}
+                  >
+                    Deep Search
+                  </Button>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {askMode === 'standard' 
+                    ? 'Uses top 3 sources in detail'
+                    : 'Analyzes 30+ sources for comprehensive answers'}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAskAI} 
+                  disabled={isAsking || !askQuery.trim()}
+                  className="gap-2"
+                >
+                  {isAsking ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Ask Knowledge Base
+                    </>
+                  )}
+                </Button>
+                {(askResponse || askQuery) && (
+                  <Button variant="outline" onClick={clearAsk}>
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Search indicator */}
-        {searchResults !== null && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span>Showing semantic search results for "{searchQuery}"</span>
-            <Button variant="link" size="sm" onClick={clearSearch} className="h-auto p-0">
-              Clear
-            </Button>
-          </div>
+        {/* Ask AI Loading State */}
+        {mode === 'ask' && isAsking && (
+          <Card className="p-8 mb-6">
+            <div className="flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Searching knowledge base and generating answer...</p>
+            </div>
+          </Card>
         )}
 
-        {/* Searching state */}
-        {isSearching && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-4">
-                <Skeleton className="h-5 w-2/3 mb-2" />
-                <Skeleton className="h-4 w-1/3 mb-2" />
-                <Skeleton className="h-4 w-full" />
-              </Card>
-            ))}
-          </div>
+        {/* Ask AI Error State */}
+        {mode === 'ask' && askError && (
+          <Card className="p-6 mb-6 border-destructive/50 bg-destructive/5">
+            <p className="text-destructive">{askError}</p>
+          </Card>
         )}
 
-        {/* Results */}
-        {!isSearching && (
-          <>
-            {displayItems.length === 0 ? (
-              <Card className="p-8 text-center">
-                <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">
-                  {searchResults !== null
-                    ? 'No results found'
-                    : hasActiveFilters
-                    ? 'No items match your filters'
-                    : 'Your knowledge base is empty'}
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchResults !== null
-                    ? 'Try a different search query.'
-                    : hasActiveFilters
-                    ? 'Try removing some filters.'
-                    : 'Process some content to get started.'}
+        {/* Ask AI Response */}
+        {mode === 'ask' && askResponse && !isAsking && (
+          <div className="space-y-4 mb-6">
+            {/* Answer Card */}
+            <Card className="p-6 border-primary/20 bg-primary/5">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">AI Answer</h3>
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                {askResponse.answer.split('\n').map((line, i) => {
+                  if (!line.trim()) return <br key={i} />;
+                  if (line.startsWith('###')) {
+                    return <h4 key={i} className="text-base font-semibold mt-4 mb-2">{line.replace(/^###\s*/, '')}</h4>;
+                  }
+                  if (line.startsWith('##')) {
+                    return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.replace(/^##\s*/, '')}</h3>;
+                  }
+                  if (line.startsWith('#')) {
+                    return <h2 key={i} className="text-xl font-semibold mt-4 mb-2">{line.replace(/^#\s*/, '')}</h2>;
+                  }
+                  if (line.startsWith('- ') || line.startsWith('* ')) {
+                    return (
+                      <div key={i} className="flex items-start gap-2 ml-4">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{line.replace(/^[-*]\s*/, '')}</span>
+                      </div>
+                    );
+                  }
+                  if (line.match(/^\d+\.\s/)) {
+                    return (
+                      <div key={i} className="flex items-start gap-2 ml-4">
+                        <span className="text-muted-foreground font-medium">{line.match(/^(\d+\.)/)?.[1]}</span>
+                        <span>{line.replace(/^\d+\.\s*/, '')}</span>
+                      </div>
+                    );
+                  }
+                  return <p key={i} className="mb-2 leading-relaxed">{line}</p>;
+                })}
+              </div>
+            </Card>
+
+            {/* Sources Used */}
+            {askResponse.sources.length > 0 && (
+              <Card className="p-6">
+                <h3 className="font-semibold text-foreground mb-4">Sources Used</h3>
+                <div className="space-y-3">
+                  {askResponse.sources.map((source) => (
+                    <div key={source.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="flex-1 min-w-0">
+                        {source.url ? (
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-primary hover:underline truncate block"
+                          >
+                            {source.title}
+                          </a>
+                        ) : (
+                          <span className="font-medium text-foreground truncate block">{source.title}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge variant="outline" className="text-xs">
+                          {Math.round(source.similarity * 100)}% match
+                        </Badge>
+                        {source.has_full_content && (
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Full Content
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  {askResponse.stats.total_searched} sources searched, {askResponse.stats.with_full_content} with full content analyzed
                 </p>
-                {!searchResults && !hasActiveFilters && (
-                  <Button asChild>
-                    <a href="/capture">Capture Content</a>
-                  </Button>
-                )}
               </Card>
-            ) : (
-              <div className="space-y-3">
-                {paginatedItems.map((item) => (
-                  <KnowledgeCard
-                    key={item.id}
-                    item={item}
-                    isExpanded={expandedId === item.id}
-                    onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                  />
-                ))}
+            )}
+          </div>
+        )}
 
-                {/* Load more */}
-                {hasMore && (
-                  <div className="text-center pt-4">
-                    <Button variant="outline" onClick={() => setPage(p => p + 1)}>
-                      Load more ({displayItems.length - paginatedItems.length} remaining)
-                    </Button>
+        {/* Search Mode Content */}
+        {mode === 'search' && (
+          <>
+            {/* Filter Bar */}
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              <FilterDropdown
+                label="Industries"
+                options={filterOptions.industries}
+                selected={filters.industries}
+                onToggle={(v) => toggleFilter('industries', v)}
+              />
+              <FilterDropdown
+                label="Technologies"
+                options={filterOptions.technologies}
+                selected={filters.technologies}
+                onToggle={(v) => toggleFilter('technologies', v)}
+              />
+              <FilterDropdown
+                label="Service Lines"
+                options={filterOptions.serviceLines}
+                selected={filters.serviceLines}
+                onToggle={(v) => toggleFilter('serviceLines', v)}
+              />
+              <FilterDropdown
+                label="Content Type"
+                options={filterOptions.contentTypes}
+                selected={filters.contentTypes}
+                onToggle={(v) => toggleFilter('contentTypes', v)}
+              />
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                  <X className="h-3 w-3 mr-1" />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+
+            {/* Search indicator */}
+            {searchResults !== null && (
+              <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span>Showing semantic search results for "{searchQuery}"</span>
+                <Button variant="link" size="sm" onClick={clearSearch} className="h-auto p-0">
+                  Clear
+                </Button>
+              </div>
+            )}
+
+            {/* Searching state */}
+            {isSearching && (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4">
+                    <Skeleton className="h-5 w-2/3 mb-2" />
+                    <Skeleton className="h-4 w-1/3 mb-2" />
+                    <Skeleton className="h-4 w-full" />
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Results */}
+            {!isSearching && (
+              <>
+                {displayItems.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <BookOpen className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">
+                      {searchResults !== null
+                        ? 'No results found'
+                        : hasActiveFilters
+                        ? 'No items match your filters'
+                        : 'Your knowledge base is empty'}
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      {searchResults !== null
+                        ? 'Try a different search query.'
+                        : hasActiveFilters
+                        ? 'Try removing some filters.'
+                        : 'Process some content to get started.'}
+                    </p>
+                    {!searchResults && !hasActiveFilters && (
+                      <Button asChild>
+                        <a href="/capture">Capture Content</a>
+                      </Button>
+                    )}
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {paginatedItems.map((item) => (
+                      <KnowledgeCard
+                        key={item.id}
+                        item={item}
+                        isExpanded={expandedId === item.id}
+                        onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                      />
+                    ))}
+
+                    {/* Load more */}
+                    {hasMore && (
+                      <div className="text-center pt-4">
+                        <Button variant="outline" onClick={() => setPage(p => p + 1)}>
+                          Load more ({displayItems.length - paginatedItems.length} remaining)
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
           </>
         )}
