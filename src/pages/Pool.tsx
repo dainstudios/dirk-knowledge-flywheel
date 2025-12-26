@@ -246,9 +246,18 @@ export default function Pool() {
                 {/* Header Section */}
                 <div className="p-5 border-b border-border/50">
                   {/* Title */}
-                  <h2 className="text-xl font-bold text-foreground leading-tight mb-3">
+                  <h2 className="text-xl font-bold text-foreground leading-tight mb-1">
                     {currentItem.title}
                   </h2>
+                  
+                  {/* Author/Source line */}
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {currentItem.author ? (
+                      <>By {currentItem.author}{currentItem.url ? ` • ${extractDomain(currentItem.url)}` : ''}</>
+                    ) : currentItem.url ? (
+                      extractDomain(currentItem.url)
+                    ) : null}
+                  </p>
                   
                   {/* Source Links */}
                   <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -281,13 +290,8 @@ export default function Pool() {
                   <div className="flex flex-wrap items-center gap-2">
                     <ContentTypeBadge type={currentItem.content_type} />
                     <CredibilityBadge tier={currentItem.source_credibility} />
-                    {currentItem.url && (
-                      <span className="text-xs text-muted-foreground">
-                        {extractDomain(currentItem.url)}
-                      </span>
-                    )}
                     <span className="text-xs text-muted-foreground">
-                      • {formatDistanceToNow(new Date(currentItem.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(currentItem.created_at), { addSuffix: true })}
                     </span>
                   </div>
                 </div>
