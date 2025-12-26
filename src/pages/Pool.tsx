@@ -190,7 +190,7 @@ function parseSummaryBullets(summary: string): string[] | null {
 }
 
 export default function Pool() {
-  const { items, isLoading, curateItem, isCurating } = usePool();
+  const { items, isLoading, processAction, isProcessing } = usePool();
   const { toast } = useToast();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -228,32 +228,29 @@ export default function Pool() {
   };
 
   const handleProcessItem = () => {
-    if (!currentItem || isCurating || selectedActions.size === 0) return;
+    if (!currentItem || isProcessing || selectedActions.size === 0) return;
 
     setExitingId(currentItem.id);
     
-    // Determine the primary action to save
-    // Priority: trash > post2team/linkedin/newsletter (implies knowledge) > knowledge
-    let statusToSave: PoolAction;
-    if (selectedActions.has('trash')) {
-      statusToSave = 'trash';
-    } else if (selectedActions.has('post2team')) {
-      statusToSave = 'post2team';
-    } else if (selectedActions.has('post2linkedin')) {
-      statusToSave = 'post2linkedin';
-    } else if (selectedActions.has('post2newsletter')) {
-      statusToSave = 'post2newsletter';
-    } else {
-      statusToSave = 'knowledge';
-    }
+    // Build the actions payload
+    const actionsPayload = {
+      trash: selectedActions.has('trash'),
+      team: selectedActions.has('post2team'),
+      linkedin: selectedActions.has('post2linkedin'),
+      newsletter: selectedActions.has('post2newsletter'),
+      keep: selectedActions.has('knowledge') || 
+            (!selectedActions.has('trash') && 
+             !selectedActions.has('post2team') && 
+             !selectedActions.has('post2linkedin') && 
+             !selectedActions.has('post2newsletter')),
+    };
     
     setTimeout(() => {
-      curateItem(
-        { id: currentItem.id, status: statusToSave },
+      processAction(
+        { item_id: currentItem.id, actions: actionsPayload },
         {
-          onSuccess: () => {
-            const summary = getActionSummary(selectedActions);
-            toast({ description: summary });
+          onSuccess: (response) => {
+            toast({ description: response.message });
             setExitingId(null);
             setSelectedActions(new Set());
             if (currentIndex >= items.length - 1 && currentIndex > 0) {
@@ -485,7 +482,7 @@ export default function Pool() {
                         <button
                           key={action}
                           onClick={() => toggleAction(action)}
-                          disabled={isCurating}
+                          disabled={isProcessing}
                           className={cn(
                             'inline-flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
                             isSelected
@@ -507,10 +504,10 @@ export default function Pool() {
                   {/* Process Button */}
                   <Button
                     onClick={handleProcessItem}
-                    disabled={isCurating || selectedActions.size === 0}
+                    disabled={isProcessing || selectedActions.size === 0}
                     className="w-full"
                   >
-                    {isCurating ? (
+                    {isProcessing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         Processing...
@@ -538,7 +535,7 @@ export default function Pool() {
                 <button
                   key={action}
                   onClick={() => toggleAction(action)}
-                  disabled={isCurating}
+                  disabled={isProcessing}
                   className={cn(
                     'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 transition-all text-xs font-medium',
                     isSelected
@@ -559,11 +556,11 @@ export default function Pool() {
           
           <Button
             onClick={handleProcessItem}
-            disabled={isCurating || selectedActions.size === 0}
+            disabled={isProcessing || selectedActions.size === 0}
             className="w-full"
             size="sm"
           >
-            {isCurating ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Processing...

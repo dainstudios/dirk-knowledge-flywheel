@@ -160,6 +160,7 @@ export type Database = {
           queued_for_linkedin_at: string | null
           queued_for_newsletter: boolean | null
           queued_for_newsletter_at: string | null
+          queued_for_team: boolean | null
           quotables: string[] | null
           service_lines: string[] | null
           shared_to_team: boolean | null
@@ -205,6 +206,7 @@ export type Database = {
           queued_for_linkedin_at?: string | null
           queued_for_newsletter?: boolean | null
           queued_for_newsletter_at?: string | null
+          queued_for_team?: boolean | null
           quotables?: string[] | null
           service_lines?: string[] | null
           shared_to_team?: boolean | null
@@ -250,6 +252,7 @@ export type Database = {
           queued_for_linkedin_at?: string | null
           queued_for_newsletter?: boolean | null
           queued_for_newsletter_at?: string | null
+          queued_for_team?: boolean | null
           quotables?: string[] | null
           service_lines?: string[] | null
           shared_to_team?: boolean | null

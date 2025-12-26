@@ -27,6 +27,25 @@ export interface PoolItem {
 
 export type PoolAction = 'trash' | 'post2team' | 'post2linkedin' | 'post2newsletter' | 'knowledge';
 
+export interface ProcessActionPayload {
+  item_id: string;
+  actions: {
+    trash: boolean;
+    team: boolean;
+    linkedin: boolean;
+    newsletter: boolean;
+    keep: boolean;
+  };
+}
+
+export interface ProcessActionResponse {
+  success: boolean;
+  item_id: string;
+  status: string;
+  actions_taken: string[];
+  message: string;
+}
+
 export function usePool() {
   const queryClient = useQueryClient();
 
@@ -44,6 +63,7 @@ export function usePool() {
     },
   });
 
+  // Legacy single action mutation (kept for backwards compatibility)
   const curateItem = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: PoolAction }) => {
       const { error } = await supabase
@@ -57,27 +77,48 @@ export function usePool() {
       if (error) throw error;
     },
     onMutate: async ({ id }) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['pool-items'] });
-
-      // Snapshot previous value
       const previousItems = queryClient.getQueryData<PoolItem[]>(['pool-items']);
-
-      // Optimistically remove the item
       queryClient.setQueryData<PoolItem[]>(['pool-items'], (old) =>
         old?.filter((item) => item.id !== id) ?? []
       );
-
       return { previousItems };
     },
     onError: (_err, _variables, context) => {
-      // Rollback on error
       if (context?.previousItems) {
         queryClient.setQueryData(['pool-items'], context.previousItems);
       }
     },
     onSettled: () => {
-      // Invalidate stats
+      queryClient.invalidateQueries({ queryKey: ['knowledge-stats'] });
+    },
+  });
+
+  // New multi-select action mutation
+  const processAction = useMutation({
+    mutationFn: async (payload: ProcessActionPayload): Promise<ProcessActionResponse> => {
+      const { data, error } = await supabase.functions.invoke('process-action', {
+        body: payload,
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as ProcessActionResponse;
+    },
+    onMutate: async ({ item_id }) => {
+      await queryClient.cancelQueries({ queryKey: ['pool-items'] });
+      const previousItems = queryClient.getQueryData<PoolItem[]>(['pool-items']);
+      queryClient.setQueryData<PoolItem[]>(['pool-items'], (old) =>
+        old?.filter((item) => item.id !== item_id) ?? []
+      );
+      return { previousItems };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousItems) {
+        queryClient.setQueryData(['pool-items'], context.previousItems);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-stats'] });
     },
   });
@@ -88,5 +129,7 @@ export function usePool() {
     error: query.error,
     curateItem: curateItem.mutate,
     isCurating: curateItem.isPending,
+    processAction: processAction.mutate,
+    isProcessing: processAction.isPending,
   };
 }
