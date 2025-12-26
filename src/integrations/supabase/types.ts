@@ -14,6 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      images: {
+        Row: {
+          chart_type: string | null
+          colors: string[] | null
+          created_at: string | null
+          dain_context: string | null
+          data_points: string[] | null
+          description: string | null
+          embedding: string | null
+          file_size: number | null
+          filename: string | null
+          fts: unknown
+          google_drive_id: string | null
+          google_drive_url: string | null
+          height: number | null
+          id: string
+          key_insight: string | null
+          knowledge_item_id: string | null
+          limitations: string | null
+          mime_type: string | null
+          processed_at: string | null
+          processing_error: string | null
+          source_attribution: string | null
+          status: string | null
+          storage_path: string | null
+          storage_url: string | null
+          text_content: string | null
+          title: string | null
+          topic_tags: string[] | null
+          trends_and_patterns: string[] | null
+          updated_at: string | null
+          use_cases: string[] | null
+          user_id: string | null
+          visual_style: string | null
+          width: number | null
+        }
+        Insert: {
+          chart_type?: string | null
+          colors?: string[] | null
+          created_at?: string | null
+          dain_context?: string | null
+          data_points?: string[] | null
+          description?: string | null
+          embedding?: string | null
+          file_size?: number | null
+          filename?: string | null
+          fts?: unknown
+          google_drive_id?: string | null
+          google_drive_url?: string | null
+          height?: number | null
+          id?: string
+          key_insight?: string | null
+          knowledge_item_id?: string | null
+          limitations?: string | null
+          mime_type?: string | null
+          processed_at?: string | null
+          processing_error?: string | null
+          source_attribution?: string | null
+          status?: string | null
+          storage_path?: string | null
+          storage_url?: string | null
+          text_content?: string | null
+          title?: string | null
+          topic_tags?: string[] | null
+          trends_and_patterns?: string[] | null
+          updated_at?: string | null
+          use_cases?: string[] | null
+          user_id?: string | null
+          visual_style?: string | null
+          width?: number | null
+        }
+        Update: {
+          chart_type?: string | null
+          colors?: string[] | null
+          created_at?: string | null
+          dain_context?: string | null
+          data_points?: string[] | null
+          description?: string | null
+          embedding?: string | null
+          file_size?: number | null
+          filename?: string | null
+          fts?: unknown
+          google_drive_id?: string | null
+          google_drive_url?: string | null
+          height?: number | null
+          id?: string
+          key_insight?: string | null
+          knowledge_item_id?: string | null
+          limitations?: string | null
+          mime_type?: string | null
+          processed_at?: string | null
+          processing_error?: string | null
+          source_attribution?: string | null
+          status?: string | null
+          storage_path?: string | null
+          storage_url?: string | null
+          text_content?: string | null
+          title?: string | null
+          topic_tags?: string[] | null
+          trends_and_patterns?: string[] | null
+          updated_at?: string | null
+          use_cases?: string[] | null
+          user_id?: string | null
+          visual_style?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "images_knowledge_item_id_fkey"
+            columns: ["knowledge_item_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_items: {
         Row: {
           actionability: string | null
@@ -221,6 +337,27 @@ export type Database = {
           summary: string
           title: string
           url: string
+        }[]
+      }
+      match_images: {
+        Args: {
+          filter_chart_type?: string
+          filter_user_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          chart_type: string
+          description: string
+          id: string
+          knowledge_item_id: string
+          similarity: number
+          source_attribution: string
+          storage_url: string
+          title: string
+          topic_tags: string[]
+          use_cases: string[]
         }[]
       }
       match_knowledge: {
