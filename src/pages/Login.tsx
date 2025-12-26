@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { Mail, Loader2, CheckCircle, Zap } from 'lucide-react';
+import { Mail, Loader2, CheckCircle } from 'lucide-react';
+import dainLogo from '@/assets/dain-logo.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,8 +67,8 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex items-center gap-2">
-              <Zap className="h-8 w-8 text-primary" />
+            <div className="flex items-center gap-3">
+              <img src={dainLogo} alt="DAIN Studios" className="h-10 w-auto" />
               <span className="font-semibold text-xl tracking-tight">Knowledge Flywheel</span>
             </div>
           </div>
