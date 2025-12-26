@@ -1,7 +1,8 @@
-import { LogOut, Zap } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigation } from './Navigation';
+import dainLogo from '@/assets/dain-logo.png';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -11,8 +12,7 @@ export function Header() {
       <div className="container flex h-14 items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Zap className="h-6 w-6 text-primary" />
-            <span className="font-semibold text-lg tracking-tight">Knowledge Flywheel</span>
+            <img src={dainLogo} alt="DAIN Studios" className="h-8 w-auto" />
           </div>
           <Navigation />
         </div>
