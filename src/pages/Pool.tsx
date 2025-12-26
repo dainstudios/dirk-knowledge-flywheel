@@ -147,6 +147,16 @@ function MetadataItem({ value }: { value: string | null }) {
   return <span>{value}</span>;
 }
 
+// Parse summary text with bullet points
+function parseSummaryBullets(summary: string): string[] | null {
+  if (!summary.includes('•')) return null;
+  
+  return summary
+    .split(/(?:^|\n)\s*•\s*/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+}
+
 export default function Pool() {
   const { items, isLoading, curateItem, isCurating } = usePool();
   const { toast } = useToast();
@@ -285,9 +295,26 @@ export default function Pool() {
                 {/* Summary Section */}
                 <div className="p-5 border-b border-border/50">
                   {currentItem.summary ? (
-                    <p className="text-foreground/90 leading-relaxed">
-                      {currentItem.summary}
-                    </p>
+                    (() => {
+                      const bullets = parseSummaryBullets(currentItem.summary);
+                      if (bullets) {
+                        return (
+                          <ul className="space-y-2 text-foreground/90">
+                            {bullets.map((bullet, i) => (
+                              <li key={i} className="flex items-start gap-2 leading-relaxed">
+                                <span className="text-primary mt-1.5 text-xs">•</span>
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      }
+                      return (
+                        <p className="text-foreground/90 leading-relaxed">
+                          {currentItem.summary}
+                        </p>
+                      );
+                    })()
                   ) : (
                     <p className="text-muted-foreground italic">
                       Processing... Summary will appear once ready.
