@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, PlusCircle, Layers } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/capture', label: 'Capture', icon: PlusCircle },
   { to: '/pool', label: 'Pool', icon: Layers },
+  { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
 ];
 
 export function Navigation() {

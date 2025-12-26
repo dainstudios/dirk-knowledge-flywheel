@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Capture from "./pages/Capture";
 import Pool from "./pages/Pool";
+import Knowledge from "./pages/Knowledge";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Pool />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/knowledge"
+              element={
+                <ProtectedRoute>
+                  <Knowledge />
                 </ProtectedRoute>
               }
             />

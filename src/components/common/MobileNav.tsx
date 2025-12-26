@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, Layers } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -6,6 +6,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/capture', icon: PlusCircle, label: 'Capture' },
   { to: '/pool', icon: Layers, label: 'Pool' },
+  { to: '/knowledge', icon: BookOpen, label: 'Knowledge' },
 ];
 
 export function MobileNav() {
