@@ -9,6 +9,12 @@ export interface PoolItem {
   user_notes: string | null;
   dain_context: string | null;
   industries: string[] | null;
+  technologies: string[] | null;
+  service_lines: string[] | null;
+  quotables: string[] | null;
+  source_credibility: string | null;
+  actionability: string | null;
+  timeliness: string | null;
   created_at: string;
 }
 
@@ -22,7 +28,7 @@ export function usePool() {
     queryFn: async (): Promise<PoolItem[]> => {
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, url, summary, user_notes, dain_context, industries, created_at')
+        .select('id, title, url, summary, user_notes, dain_context, industries, technologies, service_lines, quotables, source_credibility, actionability, timeliness, created_at')
         .eq('status', 'pool')
         .order('created_at', { ascending: false });
 
