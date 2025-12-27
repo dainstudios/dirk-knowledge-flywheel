@@ -1,2 +1,1 @@
-// Placeholder for pool/iCurate components
-export {};
+export { TeamPostModal } from './TeamPostModal';
