@@ -280,7 +280,7 @@ export default function Pool() {
         { item_id: currentItem.id, actions: actionsPayload },
         {
           onSuccess: (response) => {
-            toast({ description: response.message || 'Action completed' });
+            toast({ description: response.summary || 'Action completed' });
             setExitingId(null);
             setSelectedActions(new Set());
             if (currentIndex >= items.length - 1 && currentIndex > 0) {

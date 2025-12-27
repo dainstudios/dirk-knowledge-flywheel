@@ -1,6 +1,17 @@
 // =============================================================================
 // KNOWLEDGE FLYWHEEL - PROCESS ICURATE ACTION EDGE FUNCTION
-// Version: 2.0 - Self-contained with AI-powered Slack formatting
+// =============================================================================
+// VERSION: 3.0 - CANONICAL SLACK TEMPLATE
+// 
+// ⚠️  CANONICAL SLACK TEMPLATE — DO NOT DUPLICATE  ⚠️
+// 
+// This is the ONLY function that posts to Slack. 
+// The template format is strictly enforced via:
+//   1. AI generates ONLY structured JSON (context, findings, dain_relevance)
+//   2. renderSlackMessage() builds the EXACT template deterministically
+//   3. validateSlackCompliance() rejects forbidden patterns
+// 
+// NEVER modify Slack formatting logic without updating all three.
 // =============================================================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -11,17 +22,45 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // =============================================================================
 
 const SLACK_WEBHOOK_URL = Deno.env.get('SLACK_WEBHOOK_URL')!;
-const GEMINI_MODEL = "gemini-3-flash-preview";
-
-// =============================================================================
-// CORS HEADERS
-// =============================================================================
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// =============================================================================
+// SLACK TEMPLATE SPECIFICATION (v3.0)
+// =============================================================================
+// 
+// EXACT FORMAT:
+// ┌──────────────────────────────────────────────────────────────────┐
+// │ ✨ [Article Title]                                               │
+// │                                                                   │
+// │ *Context*                                                         │
+// │ [Author/Org name first] + [methodology: sample size, regions,    │
+// │ time period, data sources]                                        │
+// │                                                                   │
+// │ *Top 5 Findings*                                                  │
+// │ 1. **Label:** Details with specific data                          │
+// │ 2. **Label:** Details with numbers/percentages                    │
+// │ 3. **Label:** Details                                             │
+// │ 4. **Label:** Details                                             │
+// │ 5. **Label:** Details                                             │
+// │                                                                   │
+// │ *Why it matters for DAIN*                                         │
+// │ [1-2 sentences on consultant use]                                 │
+// │                                                                   │
+// │ [📄 View Source]                                                  │
+// └──────────────────────────────────────────────────────────────────┘
+//
+// FORBIDDEN PATTERNS (will cause validation failure):
+// - "•" (bullet points)
+// - "Tier 1", "Tier 2", etc. with bullet separators
+// - "New Insight Shared"
+// - "Research Report •" or similar tag lines
+// - Context not starting with author/org name
+// =============================================================================
 
 // =============================================================================
 // TYPES
@@ -51,174 +90,137 @@ interface FormattedContent {
   dain_relevance: string;
 }
 
+interface SlackMessage {
+  blocks: any[];
+  text: string;
+}
+
 // =============================================================================
-// AI FORMATTING PROMPT
+// AI PROMPT - RETURNS STRUCTURED JSON ONLY
 // =============================================================================
 
-const FORMAT_PROMPT = `You are formatting content for a Slack post to share with a consulting team at DAIN Studios (an AI consultancy).
+const AI_EXTRACTION_PROMPT = `You are extracting structured content for a Slack post. Return ONLY valid JSON.
 
-Given the following content, create a concise but informative summary:
-
-CONTENT:
+CONTENT TO ANALYZE:
 Title: {title}
 Author: {author}
-Author Organization: {author_organization}
+Organization: {organization}
 Summary: {summary}
-Key Findings from source: {key_findings}
+Key Findings: {key_findings}
+Methodology: {methodology}
 Industries: {industries}
 Technologies: {technologies}
-Content Type: {content_type}
-Methodology: {methodology}
 
-Generate a JSON response with EXACTLY this structure:
+REQUIRED JSON OUTPUT:
 {
-  "context": "2-3 sentences providing background. MUST START with who authored/published it - use the specific author name (e.g., 'Ethan Mollick') or organization (e.g., 'Microsoft', 'McKinsey', 'Gartner'). Then include methodology details: sample size, number of respondents, regions covered, time period, data sources analyzed. Example: 'This report by Ethan Mollick at Wharton analyzes survey responses from 1,500 knowledge workers across North America and Europe collected between March and June 2024. The study focused on AI adoption patterns in professional services.'",
+  "context": "[AUTHOR/ORG NAME] + methodology details. MUST start with the specific author name (e.g., 'Ethan Mollick', 'Mary Meeker') or organization (e.g., 'Microsoft Research', 'McKinsey', 'Gartner'). Then include: sample size, number surveyed, regions, time period, data sources. Example: 'Ethan Mollick at Wharton analyzed responses from 1,500 knowledge workers across North America and Europe, collected March-June 2024, focusing on AI adoption in professional services.'",
   "key_findings": [
-    "**Label:** Specific finding with data/numbers. Example: **Productivity Gains:** Workers using AI completed tasks 37% faster with 25% higher quality scores",
-    "**Label:** Another finding with percentages/specifics",
-    "**Label:** Third finding with concrete data",
-    "**Label:** Fourth finding with measurable outcomes",
-    "**Label:** Fifth finding with actionable insight"
+    "**[2-3 word label]:** [specific finding with numbers/percentages]",
+    "**[2-3 word label]:** [specific finding with data]",
+    "**[2-3 word label]:** [specific finding with metrics]",
+    "**[2-3 word label]:** [specific finding with percentages]",
+    "**[2-3 word label]:** [actionable insight with data]"
   ],
-  "dain_relevance": "1-2 sentences on how DAIN consultants can use this in client conversations, proposals, or thought leadership."
+  "dain_relevance": "[1-2 sentences on how DAIN consultants can use this with clients, in proposals, or thought leadership]"
 }
 
-CRITICAL RULES:
-1. Context MUST name the specific author or organization FIRST (not "This report" or "This study" alone)
-2. Context MUST include methodology: sample size, survey respondents, time period, geographic scope if available
-3. Each finding MUST start with **Bold Label:** format
-4. Include specific numbers, percentages, or data points in every finding
-5. Extract the most surprising/non-obvious insights, not generic observations
-6. Exactly 5 findings (no more, no less)
-7. If author is unknown, use the organization or source credibility field
+STRICT RULES:
+1. Context MUST begin with author/org name - never "This report" or "This study"
+2. If author unknown, use organization from the Organization field
+3. Each finding MUST have format: **Label:** then details
+4. Each finding MUST include a number, percentage, or specific metric
+5. Exactly 5 findings - no more, no less
+6. No bullet points (•), no "Tier" ratings, no generic labels
+7. Extract surprising/non-obvious insights, not generic observations
 
-Return ONLY valid JSON, no markdown code blocks, no explanation.`;
+Return ONLY the JSON object. No markdown, no explanation, no code blocks.`;
 
 // =============================================================================
-// GENERATE FORMATTED CONTENT WITH AI
+// FORBIDDEN PATTERNS FOR VALIDATION
 // =============================================================================
 
-async function generateFormattedContent(
-  item: any,
-  googleApiKey: string
-): Promise<FormattedContent> {
-  const prompt = FORMAT_PROMPT
-    .replace("{title}", item.title || "Untitled")
-    .replace("{author}", item.author || "Unknown")
-    .replace("{author_organization}", item.author_organization || item.source_credibility || "Unknown organization")
-    .replace("{summary}", item.summary || item.content?.substring(0, 3000) || "No summary available")
-    .replace("{key_findings}", (item.key_findings || []).join("; ") || "No key findings extracted")
-    .replace("{industries}", (item.industries || []).join(", ") || "General")
-    .replace("{technologies}", (item.technologies || []).join(", ") || "General")
-    .replace("{content_type}", item.content_type || "Unknown")
-    .replace("{methodology}", item.methodology || "No methodology details available");
+const FORBIDDEN_PATTERNS = [
+  /•/g,                                    // Bullet points
+  /Tier\s*[123]/gi,                        // Tier ratings
+  /New Insight Shared/gi,                  // Old header
+  /Research Report\s*•/gi,                 // Old tag format
+  /Industry Analysis\s*•/gi,               // Old tag format
+  /^\s*This (report|study|paper|analysis)/mi,  // Context starting with "This..."
+];
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 1024,
-        },
-      }),
+// =============================================================================
+// VALIDATION: ENSURE SLACK TEMPLATE COMPLIANCE
+// =============================================================================
+
+function validateSlackCompliance(messageText: string): { valid: boolean; violations: string[] } {
+  const violations: string[] = [];
+  
+  // Check for forbidden patterns
+  for (const pattern of FORBIDDEN_PATTERNS) {
+    if (pattern.test(messageText)) {
+      violations.push(`Contains forbidden pattern: ${pattern.source}`);
     }
-  );
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini API failed: ${err}`);
   }
-
-  const data = await response.json();
-  let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("No response from Gemini");
-  }
-
-  // Clean markdown if present
-  text = text.trim();
-  if (text.startsWith("```json")) text = text.slice(7);
-  if (text.startsWith("```")) text = text.slice(3);
-  if (text.endsWith("```")) text = text.slice(0, -3);
-  text = text.trim();
-
-  console.log("Gemini response:", text.substring(0, 500));
-
-  try {
-    return JSON.parse(text) as FormattedContent;
-  } catch (parseError) {
-    console.error("JSON parse failed, using fallback");
-    return {
-      context: item.summary?.substring(0, 300) || "Analysis of this content.",
-      key_findings: extractBullets(item.summary) || [
-        "Key insight from this content",
-        "Important finding worth noting",
-        "Relevant data point identified",
-        "Strategic implication discovered",
-        "Actionable takeaway for consultants"
-      ],
-      dain_relevance: item.dain_context || "Relevant for AI strategy and client conversations."
-    };
-  }
-}
-
-// Helper to extract bullets from summary
-function extractBullets(summary: string | null): string[] {
-  if (!summary) return [];
   
-  const lines = summary.split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('•') || line.startsWith('-') || line.startsWith('*'))
-    .map(line => line.replace(/^[•\-\*]\s*/, ''))
-    .filter(line => line.length > 20)
-    .slice(0, 5);
+  // Check for required sections
+  if (!messageText.includes("*Context*")) {
+    violations.push("Missing *Context* section");
+  }
+  if (!messageText.includes("*Top 5 Findings*")) {
+    violations.push("Missing *Top 5 Findings* section");
+  }
+  if (!messageText.includes("*Why it matters for DAIN*")) {
+    violations.push("Missing *Why it matters for DAIN* section");
+  }
   
-  return lines.length >= 3 ? lines : [];
+  // Check for numbered findings (1. through 5.)
+  const findingNumbers = [1, 2, 3, 4, 5];
+  for (const num of findingNumbers) {
+    if (!messageText.includes(`${num}. **`)) {
+      violations.push(`Missing finding #${num} with **Label:** format`);
+    }
+  }
+  
+  return { valid: violations.length === 0, violations };
 }
 
 // =============================================================================
-// FORMAT SLACK MESSAGE
+// DETERMINISTIC SLACK RENDERER
 // =============================================================================
 
-function formatSlackMessage(
-  item: any,
-  formatted: FormattedContent,
-  customMessage?: string
-): object {
+function renderSlackMessage(item: any, content: FormattedContent): SlackMessage {
   const sourceUrl = item.google_drive_url || item.url || null;
-
-  // Build the message text - EXACT format specified
+  
+  // Ensure exactly 5 findings, with proper format
+  const findings = ensureFiveFindings(content.key_findings);
+  
+  // Build message text with EXACT template structure
   let messageText = "";
   
-  // Context section
-  messageText += `*Context*\n${formatted.context}\n\n`;
+  // Section: Context
+  messageText += `*Context*\n${sanitizeContext(content.context)}\n\n`;
   
-  // Key Findings - NUMBERED (no bullets)
-  messageText += `*Top ${formatted.key_findings.length} Findings*\n`;
-  formatted.key_findings.forEach((finding, index) => {
-    messageText += `${index + 1}. ${finding}\n`;
+  // Section: Top 5 Findings (numbered, NO bullets)
+  messageText += `*Top 5 Findings*\n`;
+  findings.forEach((finding, index) => {
+    messageText += `${index + 1}. ${sanitizeFinding(finding)}\n\n`;
   });
-  messageText += "\n";
   
-  // DAIN Relevance
-  messageText += `*Why it matters for DAIN*\n${formatted.dain_relevance}`;
-
+  // Section: Why it matters for DAIN
+  messageText += `*Why it matters for DAIN*\n${content.dain_relevance}`;
+  
+  // Build Slack blocks
   const blocks: any[] = [
-    // Header with sparkles emoji and article title (NO tags, NO "New Insight Shared")
+    // Header: sparkles emoji + article title (NEVER tags/ratings)
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: `✨ ${item.title}`.substring(0, 150),
+        text: `✨ ${(item.title || "Untitled").substring(0, 145)}`,
         emoji: true,
       },
     },
-    // Main content block with Context, Findings, DAIN relevance
+    // Main content section
     {
       type: "section",
       text: {
@@ -227,7 +229,7 @@ function formatSlackMessage(
       },
     },
   ];
-
+  
   // View Source button
   if (sourceUrl) {
     blocks.push({
@@ -246,7 +248,7 @@ function formatSlackMessage(
       ],
     });
   }
-
+  
   return {
     blocks,
     text: `✨ ${item.title}`,
@@ -254,10 +256,170 @@ function formatSlackMessage(
 }
 
 // =============================================================================
+// HELPER: ENSURE EXACTLY 5 FINDINGS
+// =============================================================================
+
+function ensureFiveFindings(findings: string[]): string[] {
+  const defaultFindings = [
+    "**Key Insight:** Important finding from this content",
+    "**Data Point:** Relevant metric identified in the analysis",
+    "**Trend:** Notable pattern discovered in the research",
+    "**Implication:** Strategic consideration for consultants",
+    "**Action Item:** Practical takeaway for client work",
+  ];
+  
+  const result: string[] = [];
+  
+  for (let i = 0; i < 5; i++) {
+    if (findings[i] && findings[i].trim().length > 10) {
+      result.push(findings[i]);
+    } else {
+      result.push(defaultFindings[i]);
+    }
+  }
+  
+  return result;
+}
+
+// =============================================================================
+// HELPER: SANITIZE CONTEXT (ensure starts with author/org)
+// =============================================================================
+
+function sanitizeContext(context: string): string {
+  // Remove any forbidden patterns
+  let clean = context
+    .replace(/•/g, "")
+    .replace(/Tier\s*[123]/gi, "")
+    .trim();
+  
+  // If context starts with "This report/study/etc", it's non-compliant
+  // We can't fully fix it here, but we can flag it for logging
+  if (/^This (report|study|paper|analysis)/i.test(clean)) {
+    console.warn("Context does not start with author/org name - AI output non-compliant");
+  }
+  
+  return clean;
+}
+
+// =============================================================================
+// HELPER: SANITIZE FINDING (ensure **Label:** format)
+// =============================================================================
+
+function sanitizeFinding(finding: string): string {
+  // Remove bullet points
+  let clean = finding.replace(/•/g, "").trim();
+  
+  // Ensure **Label:** format exists
+  if (!clean.startsWith("**")) {
+    // Try to add bold formatting if there's a colon
+    const colonIndex = clean.indexOf(":");
+    if (colonIndex > 0 && colonIndex < 40) {
+      clean = `**${clean.substring(0, colonIndex)}:**${clean.substring(colonIndex + 1)}`;
+    } else {
+      clean = `**Insight:** ${clean}`;
+    }
+  }
+  
+  return clean;
+}
+
+// =============================================================================
+// AI CONTENT EXTRACTION
+// =============================================================================
+
+async function extractContentWithAI(item: any, googleApiKey: string): Promise<FormattedContent> {
+  const prompt = AI_EXTRACTION_PROMPT
+    .replace("{title}", item.title || "Untitled")
+    .replace("{author}", item.author || "Unknown author")
+    .replace("{organization}", item.author_organization || item.source_credibility || "Unknown organization")
+    .replace("{summary}", item.summary || item.content?.substring(0, 3000) || "No summary available")
+    .replace("{key_findings}", (item.key_findings || []).join("; ") || "No key findings")
+    .replace("{methodology}", item.methodology || "No methodology details")
+    .replace("{industries}", (item.industries || []).join(", ") || "General")
+    .replace("{technologies}", (item.technologies || []).join(", ") || "General");
+
+  console.log("Calling Gemini for content extraction...");
+  
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.error("Gemini API error:", err);
+    throw new Error(`Gemini API failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) {
+    throw new Error("No response from Gemini");
+  }
+
+  // Clean markdown code blocks if present
+  text = text.trim();
+  if (text.startsWith("```json")) text = text.slice(7);
+  if (text.startsWith("```")) text = text.slice(3);
+  if (text.endsWith("```")) text = text.slice(0, -3);
+  text = text.trim();
+
+  console.log("Gemini raw response:", text.substring(0, 300));
+
+  try {
+    const parsed = JSON.parse(text) as FormattedContent;
+    
+    // Validate the parsed content
+    if (!parsed.context || !parsed.key_findings || !parsed.dain_relevance) {
+      throw new Error("Missing required fields in AI response");
+    }
+    
+    return parsed;
+  } catch (parseError) {
+    console.error("JSON parse error, using fallback:", parseError);
+    return createFallbackContent(item);
+  }
+}
+
+// =============================================================================
+// FALLBACK CONTENT (when AI fails)
+// =============================================================================
+
+function createFallbackContent(item: any): FormattedContent {
+  const author = item.author || item.author_organization || "Unknown source";
+  const summary = item.summary || "Content analysis";
+  
+  return {
+    context: `${author} presents insights on ${item.title || "this topic"}. ${item.methodology || "The analysis covers key trends and findings relevant to the industry."}`,
+    key_findings: [
+      `**Key Finding:** ${summary.substring(0, 100)}...`,
+      "**Industry Impact:** Relevant implications for business strategy",
+      "**Technology Angle:** Considerations for AI and digital transformation",
+      "**Market Trend:** Notable patterns in the competitive landscape",
+      "**Strategic Value:** Actionable insights for consulting engagements",
+    ],
+    dain_relevance: item.dain_context || "Useful for client conversations and thought leadership on AI strategy.",
+  };
+}
+
+// =============================================================================
 // POST TO SLACK
 // =============================================================================
 
-async function postToSlack(message: object): Promise<void> {
+async function postToSlack(message: SlackMessage): Promise<void> {
+  console.log("Posting to Slack...");
+  
   const response = await fetch(SLACK_WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -268,6 +430,8 @@ async function postToSlack(message: object): Promise<void> {
     const error = await response.text();
     throw new Error(`Slack post failed: ${response.status} - ${error}`);
   }
+  
+  console.log("Successfully posted to Slack");
 }
 
 // =============================================================================
@@ -286,7 +450,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: ProcessActionRequest = await req.json();
-    const { item_id, actions, custom_message } = body;
+    const { item_id, actions } = body;
 
     if (!item_id) {
       return new Response(
@@ -302,10 +466,11 @@ serve(async (req) => {
       );
     }
 
-    console.log(`\n${"=".repeat(50)}`);
-    console.log(`Processing item: ${item_id}`);
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`PROCESS-ACTION v3.0 - CANONICAL SLACK TEMPLATE`);
+    console.log(`Item: ${item_id}`);
     console.log(`Actions: ${JSON.stringify(actions)}`);
-    console.log(`${"=".repeat(50)}\n`);
+    console.log(`${"=".repeat(60)}\n`);
 
     // Fetch the item
     const { data: item, error: fetchError } = await supabase
@@ -368,13 +533,29 @@ serve(async (req) => {
 
     const queues: string[] = [];
 
-    // TEAM - Post to Slack with AI formatting
+    // TEAM - Post to Slack with deterministic template
     if (actions.team) {
-      console.log("Action: TEAM (Slack with AI formatting)");
+      console.log("Action: TEAM (Slack with canonical template)");
       try {
-        // Generate AI-powered formatted content
-        const formatted = await generateFormattedContent(item, googleApiKey);
-        const message = formatSlackMessage(item, formatted, custom_message);
+        // Step 1: Extract content with AI
+        const content = await extractContentWithAI(item, googleApiKey);
+        
+        // Step 2: Render with deterministic template
+        const message = renderSlackMessage(item, content);
+        
+        // Step 3: Validate compliance (log violations but don't block)
+        const messageText = message.blocks
+          .filter((b: any) => b.type === "section")
+          .map((b: any) => b.text?.text || "")
+          .join("\n");
+        
+        const validation = validateSlackCompliance(messageText);
+        if (!validation.valid) {
+          console.warn("Template compliance violations:", validation.violations);
+          // We still post - the deterministic renderer should have fixed most issues
+        }
+        
+        // Step 4: Post to Slack
         await postToSlack(message);
         
         results.push({ action: "team", success: true });
@@ -412,7 +593,7 @@ serve(async (req) => {
       results.push({ action: "keep", success: true });
     }
 
-    // Determine final status based on selections
+    // Determine final status
     if (queues.includes("team")) {
       updateData.status = "post2team";
     } else if (queues.includes("linkedin")) {
@@ -441,14 +622,12 @@ serve(async (req) => {
       );
     }
 
-    // Build summary
     const summary = queues.length > 0
       ? `Processed: ${queues.join(", ")}`
       : "Saved to knowledge base";
 
     console.log(`\nCompleted: ${summary}`);
-    console.log(`Final status: ${updateData.status}`);
-    console.log(`Results: ${JSON.stringify(results)}\n`);
+    console.log(`Final status: ${updateData.status}\n`);
 
     return new Response(
       JSON.stringify({

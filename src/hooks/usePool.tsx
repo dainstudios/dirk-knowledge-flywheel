@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// =============================================================================
+// POOL HOOK - KNOWLEDGE FLYWHEEL v3.0
+// =============================================================================
+// 
+// All Slack posting goes through processAction with actions.team = true.
+// The deprecated postToSlack mutation has been removed.
+// =============================================================================
+
 export interface PoolItem {
   id: string;
   title: string;
@@ -41,19 +49,17 @@ export interface ProcessActionPayload {
 export interface ProcessActionResponse {
   success: boolean;
   item_id: string;
-  status: string;
-  actions_taken: string[];
-  message: string;
-}
-
-export interface PostToSlackResponse {
-  success: boolean;
-  item_id: string;
+  title?: string;
+  results?: Array<{ action: string; success: boolean; error?: string }>;
+  final_status?: string;
+  summary?: string;
+  error?: string;
 }
 
 export function usePool() {
   const queryClient = useQueryClient();
 
+  // Fetch pool items
   const query = useQuery({
     queryKey: ['pool-items'],
     queryFn: async (): Promise<PoolItem[]> => {
@@ -99,7 +105,7 @@ export function usePool() {
     },
   });
 
-  // Process action mutation - simple, no auth complexity
+  // Process action mutation - canonical path for all actions including Slack
   const processAction = useMutation({
     mutationFn: async (payload: ProcessActionPayload): Promise<ProcessActionResponse> => {
       const { data, error } = await supabase.functions.invoke('process-action', {
@@ -127,34 +133,6 @@ export function usePool() {
     },
   });
 
-  // Post to Slack mutation - simple, no auth complexity
-  const postToSlack = useMutation({
-    mutationFn: async (itemId: string): Promise<PostToSlackResponse> => {
-      const { data, error } = await supabase.functions.invoke('post-to-slack', {
-        body: { item_id: itemId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data as PostToSlackResponse;
-    },
-    onMutate: async (itemId) => {
-      await queryClient.cancelQueries({ queryKey: ['pool-items'] });
-      const previousItems = queryClient.getQueryData<PoolItem[]>(['pool-items']);
-      queryClient.setQueryData<PoolItem[]>(['pool-items'], (old) =>
-        old?.filter((item) => item.id !== itemId) ?? []
-      );
-      return { previousItems };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousItems) {
-        queryClient.setQueryData(['pool-items'], context.previousItems);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge-stats'] });
-    },
-  });
-
   return {
     items: query.data ?? [],
     isLoading: query.isLoading,
@@ -163,7 +141,5 @@ export function usePool() {
     isCurating: curateItem.isPending,
     processAction: processAction.mutate,
     isProcessing: processAction.isPending,
-    postToSlack: postToSlack.mutate,
-    isPostingToSlack: postToSlack.isPending,
   };
 }
