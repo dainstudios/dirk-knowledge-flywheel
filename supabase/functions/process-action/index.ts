@@ -62,31 +62,37 @@ Given the following content, create a concise but informative summary:
 CONTENT:
 Title: {title}
 Author: {author}
+Author Organization: {author_organization}
 Summary: {summary}
+Key Findings from source: {key_findings}
 Industries: {industries}
 Technologies: {technologies}
+Content Type: {content_type}
+Methodology: {methodology}
 
 Generate a JSON response with EXACTLY this structure:
 {
-  "context": "2-3 sentences providing quick background so readers understand the findings. MUST include: who authored/published it (person or organization), and if it's research/survey: sample size, regions covered, time period. Example: 'This paper, authored by Microsoft AI, analyzes 37.5 million deidentified conversations with Microsoft Copilot that occurred between January and September 2025.'",
+  "context": "2-3 sentences providing background. MUST START with who authored/published it - use the specific author name (e.g., 'Ethan Mollick') or organization (e.g., 'Microsoft', 'McKinsey', 'Gartner'). Then include methodology details: sample size, number of respondents, regions covered, time period, data sources analyzed. Example: 'This report by Ethan Mollick at Wharton analyzes survey responses from 1,500 knowledge workers across North America and Europe collected between March and June 2024. The study focused on AI adoption patterns in professional services.'",
   "key_findings": [
-    "First key finding with a bold topic label followed by explanation. Format: **Label:** Details with specific data",
-    "Second key finding. Format: **Label:** Details with numbers/percentages",
-    "Third key finding. Format: **Label:** Details",
-    "Fourth key finding. Format: **Label:** Details",
-    "Fifth key finding. Format: **Label:** Details"
+    "**Label:** Specific finding with data/numbers. Example: **Productivity Gains:** Workers using AI completed tasks 37% faster with 25% higher quality scores",
+    "**Label:** Another finding with percentages/specifics",
+    "**Label:** Third finding with concrete data",
+    "**Label:** Fourth finding with measurable outcomes",
+    "**Label:** Fifth finding with actionable insight"
   ],
   "dain_relevance": "1-2 sentences on how DAIN consultants can use this in client conversations, proposals, or thought leadership."
 }
 
-RULES:
-- Context MUST mention the author/organization and methodology details (sample size, regions, time period if available)
-- Each finding should start with a **Bold Label:** followed by the insight
-- Include specific numbers, percentages, or data points when available
-- Focus on surprising or non-obvious insights, not generic observations
-- Maximum 5 findings (not more)
+CRITICAL RULES:
+1. Context MUST name the specific author or organization FIRST (not "This report" or "This study" alone)
+2. Context MUST include methodology: sample size, survey respondents, time period, geographic scope if available
+3. Each finding MUST start with **Bold Label:** format
+4. Include specific numbers, percentages, or data points in every finding
+5. Extract the most surprising/non-obvious insights, not generic observations
+6. Exactly 5 findings (no more, no less)
+7. If author is unknown, use the organization or source credibility field
 
-Return ONLY valid JSON, no markdown, no explanation.`;
+Return ONLY valid JSON, no markdown code blocks, no explanation.`;
 
 // =============================================================================
 // GENERATE FORMATTED CONTENT WITH AI
@@ -98,10 +104,14 @@ async function generateFormattedContent(
 ): Promise<FormattedContent> {
   const prompt = FORMAT_PROMPT
     .replace("{title}", item.title || "Untitled")
-    .replace("{author}", item.author || item.source_credibility || "Unknown")
+    .replace("{author}", item.author || "Unknown")
+    .replace("{author_organization}", item.author_organization || item.source_credibility || "Unknown organization")
     .replace("{summary}", item.summary || item.content?.substring(0, 3000) || "No summary available")
+    .replace("{key_findings}", (item.key_findings || []).join("; ") || "No key findings extracted")
     .replace("{industries}", (item.industries || []).join(", ") || "General")
-    .replace("{technologies}", (item.technologies || []).join(", ") || "General");
+    .replace("{technologies}", (item.technologies || []).join(", ") || "General")
+    .replace("{content_type}", item.content_type || "Unknown")
+    .replace("{methodology}", item.methodology || "No methodology details available");
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`,
