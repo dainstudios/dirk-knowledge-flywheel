@@ -202,7 +202,6 @@ export default function Pool() {
   const totalItems = items.length;
 
   // Handle Team button click - posts to Slack immediately
-  // Auth is now handled inside invokeWithAuth in usePool
   const handleTeamClick = async () => {
     if (!currentItem || isPostingToSlack) return;
 
@@ -220,21 +219,10 @@ export default function Pool() {
         }
       },
       onError: (err: unknown) => {
-        const error = err as Error & { isAuthError?: boolean };
-        const isAuthError = error.isAuthError || 
-                           error.message?.toLowerCase().includes('session expired');
-
-        toast({
-          description: error.message || 'Failed to share',
-          variant: 'destructive',
-        });
-
+        const message = err instanceof Error ? err.message : 'Failed to share';
+        toast({ description: message, variant: 'destructive' });
         setPostingTeamItemId(null);
         setExitingId(null);
-
-        if (isAuthError) {
-          navigate('/auth');
-        }
       },
     });
   };
@@ -273,13 +261,11 @@ export default function Pool() {
     });
   };
 
-  // Auth is now handled inside invokeWithAuth in usePool
   const handleProcessItem = async () => {
     if (!currentItem || isProcessing || selectedActions.size === 0) return;
 
     setExitingId(currentItem.id);
     
-    // Build the actions payload
     const actionsPayload = {
       trash: selectedActions.has('trash'),
       team: selectedActions.has('post2team'),
@@ -297,27 +283,16 @@ export default function Pool() {
         { item_id: currentItem.id, actions: actionsPayload },
         {
           onSuccess: (response) => {
-            toast({ description: response.message });
+            toast({ description: response.message || 'Action completed' });
             setExitingId(null);
             setSelectedActions(new Set());
             if (currentIndex >= items.length - 1 && currentIndex > 0) {
               setCurrentIndex(currentIndex - 1);
             }
           },
-          onError: (err: unknown) => {
-            const error = err as Error & { isAuthError?: boolean };
-            const isAuthError = error.isAuthError || 
-                               error.message?.toLowerCase().includes('session expired');
-            
-            toast({ 
-              description: error.message || 'Action failed. Please try again.',
-              variant: 'destructive' 
-            });
+          onError: (error: Error) => {
+            toast({ description: error.message || 'Action failed', variant: 'destructive' });
             setExitingId(null);
-            
-            if (isAuthError) {
-              navigate('/auth');
-            }
           },
         }
       );
