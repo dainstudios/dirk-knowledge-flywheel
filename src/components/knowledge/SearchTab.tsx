@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -315,12 +316,20 @@ function KnowledgeCard({
             </div>
           </div>
 
-          <div className="p-4 text-xs text-muted-foreground">
-            <div className="flex flex-wrap gap-4">
+          <div className="p-4 border-t border-border/50 flex items-center justify-between">
+            <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
               {item.actionability && <span>Actionability: {item.actionability}</span>}
               {item.timeliness && <span>Timeliness: {item.timeliness}</span>}
               {item.dain_relevance && <span>Relevance: {item.dain_relevance}</span>}
             </div>
+            <Link
+              to={`/knowledge/${item.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              <BookOpen className="h-3 w-3" />
+              View Details
+            </Link>
           </div>
         </div>
       )}
