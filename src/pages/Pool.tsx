@@ -203,8 +203,19 @@ export default function Pool() {
   const totalItems = items.length;
 
   // Handle Team button click - posts to Slack immediately
-  const handleTeamClick = () => {
+  const handleTeamClick = async () => {
     if (!currentItem || isPostingToSlack) return;
+
+    // Verify session is still valid (avoids silent 401s)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        description: 'Session expired. Please log in again.',
+        variant: 'destructive',
+      });
+      navigate('/auth');
+      return;
+    }
 
     setPostingTeamItemId(currentItem.id);
     setExitingId(currentItem.id);
@@ -219,13 +230,27 @@ export default function Pool() {
           setCurrentIndex(currentIndex - 1);
         }
       },
-      onError: () => {
-        toast({ 
-          description: 'Failed to share',
-          variant: 'destructive' 
+      onError: (err: unknown) => {
+        const message =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+              ? err
+              : 'Failed to share';
+
+        const isAuthError = message.toLowerCase().includes('unauthorized') || message.includes('401');
+
+        toast({
+          description: isAuthError ? 'Session expired. Please log in again.' : message,
+          variant: 'destructive',
         });
+
         setPostingTeamItemId(null);
         setExitingId(null);
+
+        if (isAuthError) {
+          navigate('/auth');
+        }
       },
     });
   };
