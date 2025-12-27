@@ -28,10 +28,12 @@ Deno.serve(async (req) => {
 
     // Get auth token from request
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader) {
       console.error('No authorization header provided');
       return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
+        JSON.stringify({ error: 'Authorization required', details: 'No auth header in request' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -40,6 +42,17 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
+
+    // Verify the token is valid by getting the user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('Auth error:', authError?.message || 'No user found');
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token', details: authError?.message || 'Session may have expired' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    console.log('User authenticated:', user.id);
 
     // Parse request body
     const body: ActionRequest = await req.json();
