@@ -92,7 +92,7 @@ export function TeamPostModal({
 
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-infographic`,
+          'https://wcdtdjztzrlvwkmlwpgw.supabase.co/functions/v1/generate-infographic',
           {
             method: 'POST',
             headers: {
