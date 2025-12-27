@@ -293,8 +293,15 @@ export function ImagesTab() {
         },
       });
 
-      if (fnError) throw fnError;
-      if (data.error) throw new Error(data.error);
+      if (fnError) {
+        console.error('Function invocation error:', fnError);
+        throw new Error(fnError.message || 'Failed to search images');
+      }
+      
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
 
       setResponse(data);
     } catch (err) {
