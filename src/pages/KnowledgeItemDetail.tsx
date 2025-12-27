@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Header, LoadingState } from '@/components/common';
+import { Header, LoadingState, FormattedText } from '@/components/common';
 import { InfographicSection } from '@/components/knowledge/InfographicSection';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -173,13 +173,13 @@ export default function KnowledgeItemDetail() {
                     {bullets.map((bullet, i) => (
                       <li key={i} className="flex items-start gap-2 leading-relaxed text-sm">
                         <span className="text-primary mt-0.5">•</span>
-                        <span>{bullet}</span>
+                        <FormattedText content={bullet} as="span" />
                       </li>
                     ))}
                   </ul>
                 );
               }
-              return <p className="text-sm text-foreground/90 leading-relaxed">{item.summary}</p>;
+              return <FormattedText content={item.summary} className="text-sm text-foreground/90 leading-relaxed" />;
             })()}
           </Card>
         )}
@@ -191,7 +191,7 @@ export default function KnowledgeItemDetail() {
               <Sparkles className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-primary">DAIN Context</h3>
             </div>
-            <p className="text-sm text-foreground/90 leading-relaxed">{item.dain_context}</p>
+            <FormattedText content={item.dain_context} className="text-sm text-foreground/90 leading-relaxed" />
           </Card>
         )}
 

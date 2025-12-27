@@ -303,7 +303,7 @@ function sanitizeContext(context: string): string {
 }
 
 // =============================================================================
-// HELPER: SANITIZE FINDING (ensure **Label:** format)
+// HELPER: SANITIZE FINDING (ensure **Label:** format, convert to Slack bold)
 // =============================================================================
 
 function sanitizeFinding(finding: string): string {
@@ -320,6 +320,9 @@ function sanitizeFinding(finding: string): string {
       clean = `**Insight:** ${clean}`;
     }
   }
+  
+  // Convert markdown **bold** to Slack *bold* format
+  clean = clean.replace(/\*\*([^*]+)\*\*/g, "*$1*");
   
   return clean;
 }
