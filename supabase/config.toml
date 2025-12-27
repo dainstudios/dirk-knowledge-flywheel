@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.find-quote]
-verify_jwt = true
+verify_jwt = false
 
 [functions.find-image]
 verify_jwt = true
