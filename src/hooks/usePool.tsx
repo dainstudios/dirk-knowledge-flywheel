@@ -46,6 +46,11 @@ export interface ProcessActionResponse {
   message: string;
 }
 
+export interface PostToSlackResponse {
+  success: boolean;
+  item_id: string;
+}
+
 export function usePool() {
   const queryClient = useQueryClient();
 
@@ -97,7 +102,6 @@ export function usePool() {
   // Process action mutation - simple, no auth complexity
   const processAction = useMutation({
     mutationFn: async (payload: ProcessActionPayload): Promise<ProcessActionResponse> => {
-      console.log('[usePool] invoking process-action', payload);
       const { data, error } = await supabase.functions.invoke('process-action', {
         body: payload,
       });
@@ -123,6 +127,33 @@ export function usePool() {
     },
   });
 
+  // Post to Slack mutation - simple, no auth complexity
+  const postToSlack = useMutation({
+    mutationFn: async (itemId: string): Promise<PostToSlackResponse> => {
+      const { data, error } = await supabase.functions.invoke('post-to-slack', {
+        body: { item_id: itemId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as PostToSlackResponse;
+    },
+    onMutate: async (itemId) => {
+      await queryClient.cancelQueries({ queryKey: ['pool-items'] });
+      const previousItems = queryClient.getQueryData<PoolItem[]>(['pool-items']);
+      queryClient.setQueryData<PoolItem[]>(['pool-items'], (old) =>
+        old?.filter((item) => item.id !== itemId) ?? []
+      );
+      return { previousItems };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousItems) {
+        queryClient.setQueryData(['pool-items'], context.previousItems);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-stats'] });
+    },
+  });
 
   return {
     items: query.data ?? [],
@@ -132,5 +163,7 @@ export function usePool() {
     isCurating: curateItem.isPending,
     processAction: processAction.mutate,
     isProcessing: processAction.isPending,
+    postToSlack: postToSlack.mutate,
+    isPostingToSlack: postToSlack.isPending,
   };
 }

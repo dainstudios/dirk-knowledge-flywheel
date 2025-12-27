@@ -203,12 +203,6 @@ export default function Pool() {
   const handleTeamClick = () => {
     if (!currentItem || isProcessing) return;
 
-    console.log('[Pool] Team clicked → invoking process-action', {
-      item_id: currentItem.id,
-      title: currentItem.title,
-    });
-    toast({ description: 'DEBUG: Calling process-action…' });
-
     setExitingId(currentItem.id);
 
     processAction(

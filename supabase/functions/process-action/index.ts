@@ -269,11 +269,6 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  console.log("HIT process-action", {
-    method: req.method,
-    ts: new Date().toISOString(),
-  });
-
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
