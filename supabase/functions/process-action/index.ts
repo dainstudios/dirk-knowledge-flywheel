@@ -182,13 +182,13 @@ function formatSlackMessage(
 ): object {
   const sourceUrl = item.google_drive_url || item.url || null;
 
-  // Build the message text
+  // Build the message text - EXACT format specified
   let messageText = "";
   
-  // Context
+  // Context section
   messageText += `*Context*\n${formatted.context}\n\n`;
   
-  // Key Findings - NUMBERED
+  // Key Findings - NUMBERED (no bullets)
   messageText += `*Top ${formatted.key_findings.length} Findings*\n`;
   formatted.key_findings.forEach((finding, index) => {
     messageText += `${index + 1}. ${finding}\n`;
@@ -199,38 +199,26 @@ function formatSlackMessage(
   messageText += `*Why it matters for DAIN*\n${formatted.dain_relevance}`;
 
   const blocks: any[] = [
+    // Header with sparkles emoji and article title (NO tags, NO "New Insight Shared")
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: `✨ ${item.title}`.substring(0, 150), // Slack header max 150 chars
+        text: `✨ ${item.title}`.substring(0, 150),
         emoji: true,
+      },
+    },
+    // Main content block with Context, Findings, DAIN relevance
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: messageText,
       },
     },
   ];
 
-  // Custom message from user
-  if (customMessage) {
-    blocks.push({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `💬 _"${customMessage}"_`,
-      },
-    });
-    blocks.push({ type: "divider" });
-  }
-
-  // Main content
-  blocks.push({
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: messageText,
-    },
-  });
-
-  // Source button
+  // View Source button
   if (sourceUrl) {
     blocks.push({
       type: "actions",
@@ -248,8 +236,6 @@ function formatSlackMessage(
       ],
     });
   }
-
-  blocks.push({ type: "divider" });
 
   return {
     blocks,
