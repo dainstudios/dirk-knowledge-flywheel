@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeWithAuth } from '@/lib/supabaseEdge';
 
 export interface PoolItem {
   id: string;
@@ -99,22 +100,21 @@ export function usePool() {
     },
   });
 
-  // New multi-select action mutation
+  // New multi-select action mutation - uses authenticated invoke
   const processAction = useMutation({
     mutationFn: async (payload: ProcessActionPayload): Promise<ProcessActionResponse> => {
-      const { data, error } = await supabase.functions.invoke('process-action', {
+      const result = await invokeWithAuth<ProcessActionResponse>('process-action', {
         body: payload,
       });
 
-      if (error) {
-        console.error('Process action error:', error);
-        throw error;
+      if (result.error) {
+        // Attach isAuthError flag for caller to handle redirect
+        const err = result.error as Error & { isAuthError?: boolean };
+        err.isAuthError = result.isAuthError;
+        throw err;
       }
-      if (data?.error) {
-        console.error('Process action data error:', data.error);
-        throw new Error(data.error);
-      }
-      return data as ProcessActionResponse;
+
+      return result.data!;
     },
     onMutate: async ({ item_id }) => {
       await queryClient.cancelQueries({ queryKey: ['pool-items'] });
@@ -134,23 +134,21 @@ export function usePool() {
     },
   });
 
-  // Post to Slack mutation
+  // Post to Slack mutation - uses authenticated invoke
   const postToSlack = useMutation({
     mutationFn: async (itemId: string): Promise<PostToSlackResponse> => {
-      // Log session state for debugging
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('postToSlack - Session exists:', !!session);
-      console.log('postToSlack - Token prefix:', session?.access_token?.substring(0, 20));
-      
-      const { data, error } = await supabase.functions.invoke('post-to-slack', {
+      const result = await invokeWithAuth<PostToSlackResponse>('post-to-slack', {
         body: { item_id: itemId },
       });
 
-      console.log('postToSlack - Response:', { data, error });
-      
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data as PostToSlackResponse;
+      if (result.error) {
+        // Attach isAuthError flag for caller to handle redirect
+        const err = result.error as Error & { isAuthError?: boolean };
+        err.isAuthError = result.isAuthError;
+        throw err;
+      }
+
+      return result.data!;
     },
     onMutate: async (itemId) => {
       await queryClient.cancelQueries({ queryKey: ['pool-items'] });

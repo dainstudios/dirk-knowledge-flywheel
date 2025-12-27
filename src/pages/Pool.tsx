@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   Trash2, 
   Users, 
@@ -203,21 +202,9 @@ export default function Pool() {
   const totalItems = items.length;
 
   // Handle Team button click - posts to Slack immediately
+  // Auth is now handled inside invokeWithAuth in usePool
   const handleTeamClick = async () => {
     if (!currentItem || isPostingToSlack) return;
-
-    // Refresh session to ensure fresh token (avoids silent 401s from stale tokens)
-    const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
-    if (refreshError || !session) {
-      console.log('Session refresh failed:', refreshError?.message);
-      toast({
-        description: 'Session expired. Please log in again.',
-        variant: 'destructive',
-      });
-      navigate('/auth');
-      return;
-    }
-    console.log('Session refreshed, token valid until:', new Date(session.expires_at! * 1000).toISOString());
 
     setPostingTeamItemId(currentItem.id);
     setExitingId(currentItem.id);
@@ -233,17 +220,12 @@ export default function Pool() {
         }
       },
       onError: (err: unknown) => {
-        const message =
-          err instanceof Error
-            ? err.message
-            : typeof err === 'string'
-              ? err
-              : 'Failed to share';
-
-        const isAuthError = message.toLowerCase().includes('unauthorized') || message.includes('401');
+        const error = err as Error & { isAuthError?: boolean };
+        const isAuthError = error.isAuthError || 
+                           error.message?.toLowerCase().includes('session expired');
 
         toast({
-          description: isAuthError ? 'Session expired. Please log in again.' : message,
+          description: error.message || 'Failed to share',
           variant: 'destructive',
         });
 
@@ -291,19 +273,9 @@ export default function Pool() {
     });
   };
 
+  // Auth is now handled inside invokeWithAuth in usePool
   const handleProcessItem = async () => {
     if (!currentItem || isProcessing || selectedActions.size === 0) return;
-
-    // Verify session is still valid
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast({
-        description: 'Session expired. Please log in again.',
-        variant: 'destructive',
-      });
-      navigate('/auth');
-      return;
-    }
 
     setExitingId(currentItem.id);
     
@@ -332,15 +304,17 @@ export default function Pool() {
               setCurrentIndex(currentIndex - 1);
             }
           },
-          onError: (error: Error) => {
-            const isAuthError = error.message?.toLowerCase().includes('session') || 
-                                error.message?.toLowerCase().includes('unauthorized') ||
-                                error.message?.toLowerCase().includes('401');
+          onError: (err: unknown) => {
+            const error = err as Error & { isAuthError?: boolean };
+            const isAuthError = error.isAuthError || 
+                               error.message?.toLowerCase().includes('session expired');
+            
             toast({ 
-              description: isAuthError ? 'Session expired. Please log in again.' : (error.message || 'Action failed. Please try again.'),
+              description: error.message || 'Action failed. Please try again.',
               variant: 'destructive' 
             });
             setExitingId(null);
+            
             if (isAuthError) {
               navigate('/auth');
             }
