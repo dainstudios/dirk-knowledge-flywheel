@@ -13,7 +13,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.process-action]
-verify_jwt = false
+verify_jwt = true
 
 [functions.post-to-slack]
-verify_jwt = false
+verify_jwt = true
