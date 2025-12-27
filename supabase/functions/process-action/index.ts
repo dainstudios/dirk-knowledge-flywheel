@@ -17,8 +17,14 @@ interface ActionRequest {
 }
 
 Deno.serve(async (req) => {
+  console.log('=== process-action function invoked ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Headers:', Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 

@@ -102,17 +102,31 @@ export function usePool() {
   // New multi-select action mutation
   const processAction = useMutation({
     mutationFn: async (payload: ProcessActionPayload): Promise<ProcessActionResponse> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      console.log('=== processAction called ===');
+      console.log('Payload:', payload);
+      
+      // Force refresh the session to ensure we have a valid token
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      
+      if (sessionError) {
+        console.error('Session refresh error:', sessionError.message);
+      }
+      
+      if (!session) {
+        console.error('No session after refresh');
         throw new Error('Session expired. Please log in again.');
       }
+      
+      console.log('Session valid after refresh');
+      console.log('Access token exists:', !!session.access_token);
+      console.log('Token prefix:', session.access_token?.substring(0, 30) + '...');
 
+      // Let Supabase client handle auth automatically
       const { data, error } = await supabase.functions.invoke('process-action', {
         body: payload,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
       });
+
+      console.log('Edge function response:', { data, error });
 
       if (error) {
         console.error('Process action error:', error);
