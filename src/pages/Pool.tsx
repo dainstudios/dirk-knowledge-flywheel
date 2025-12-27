@@ -16,7 +16,7 @@ import {
   FlaskConical,
   Check
 } from 'lucide-react';
-import { Header, MobileNav } from '@/components/common';
+import { Header, MobileNav, FormattedText } from '@/components/common';
 import { TeamPostModal } from '@/components/pool';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -411,16 +411,17 @@ export default function Pool() {
                             {bullets.map((bullet, i) => (
                               <li key={i} className="flex items-start gap-2 leading-relaxed">
                                 <span className="text-primary mt-1.5 text-xs">•</span>
-                                <span>{bullet}</span>
+                                <FormattedText content={bullet} as="span" />
                               </li>
                             ))}
                           </ul>
                         );
                       }
                       return (
-                        <p className="text-foreground/90 leading-relaxed">
-                          {currentItem.summary}
-                        </p>
+                        <FormattedText 
+                          content={currentItem.summary} 
+                          className="text-foreground/90 leading-relaxed"
+                        />
                       );
                     })()
                   ) : (
@@ -458,9 +459,10 @@ export default function Pool() {
                     <h3 className="text-sm font-semibold text-primary mb-2">
                       Why it matters for DAIN
                     </h3>
-                    <p className="text-sm text-foreground/80 leading-relaxed">
-                      {currentItem.dain_context}
-                    </p>
+                    <FormattedText 
+                      content={currentItem.dain_context} 
+                      className="text-sm text-foreground/80 leading-relaxed"
+                    />
                   </div>
                 )}
 
