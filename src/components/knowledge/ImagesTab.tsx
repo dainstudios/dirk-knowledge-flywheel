@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,9 @@ import {
   Grid3X3,
   Table,
   FileImage,
+  Wand2,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -340,6 +343,60 @@ export function ImagesTab() {
   const [response, setResponse] = useState<ImageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<ImageResult | null>(null);
+  
+  // Admin state for processing
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processResult, setProcessResult] = useState<{
+    processed: number;
+    failed: number;
+  } | null>(null);
+  const [unprocessedCount, setUnprocessedCount] = useState<number | null>(null);
+
+  // Fetch unprocessed count on mount
+  useEffect(() => {
+    const fetchUnprocessedCount = async () => {
+      const { count, error } = await supabase
+        .from('images')
+        .select('*', { count: 'exact', head: true })
+        .is('embedding', null)
+        .not('storage_url', 'is', null);
+      
+      if (!error && count !== null) {
+        setUnprocessedCount(count);
+      }
+    };
+    fetchUnprocessedCount();
+  }, [processResult]);
+
+  const handleProcessImages = async () => {
+    setIsProcessing(true);
+    setProcessResult(null);
+    
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('process-image', {
+        body: { batch: true, limit: 5 }
+      });
+
+      if (fnError) throw new Error(fnError.message);
+      if (data?.error) throw new Error(data.error);
+
+      setProcessResult({
+        processed: data.processed || 0,
+        failed: data.failed || 0
+      });
+
+      if (data.processed > 0) {
+        toast.success(`Processed ${data.processed} images successfully`);
+      } else {
+        toast.info('No images to process');
+      }
+    } catch (err) {
+      console.error('Process images error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to process images');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -386,9 +443,52 @@ export function ImagesTab() {
   return (
     <div className="space-y-6">
       {/* Helper text */}
-      <p className="text-sm text-muted-foreground">
-        Search charts, graphs, and infographics from your visual library
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Search charts, graphs, and infographics from your visual library
+        </p>
+        
+        {/* Admin: Process Images Button */}
+        {unprocessedCount !== null && unprocessedCount > 0 && (
+          <div className="flex items-center gap-3">
+            {processResult && (
+              <div className="flex items-center gap-2 text-sm">
+                {processResult.processed > 0 && (
+                  <span className="flex items-center gap-1 text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    {processResult.processed} processed
+                  </span>
+                )}
+                {processResult.failed > 0 && (
+                  <span className="flex items-center gap-1 text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    {processResult.failed} failed
+                  </span>
+                )}
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleProcessImages}
+              disabled={isProcessing}
+              className="gap-2"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Process {Math.min(unprocessedCount, 5)} of {unprocessedCount}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Input */}
       <div className="space-y-4">
