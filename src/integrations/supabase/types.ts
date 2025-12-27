@@ -153,6 +153,7 @@ export type Database = {
           industries: string[] | null
           infographic_generated_at: string | null
           infographic_style: string | null
+          infographic_type: string | null
           infographic_url: string | null
           key_findings: string[] | null
           methodology: string | null
@@ -204,6 +205,7 @@ export type Database = {
           industries?: string[] | null
           infographic_generated_at?: string | null
           infographic_style?: string | null
+          infographic_type?: string | null
           infographic_url?: string | null
           key_findings?: string[] | null
           methodology?: string | null
@@ -255,6 +257,7 @@ export type Database = {
           industries?: string[] | null
           infographic_generated_at?: string | null
           infographic_style?: string | null
+          infographic_type?: string | null
           infographic_url?: string | null
           key_findings?: string[] | null
           methodology?: string | null

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Capture from "./pages/Capture";
 import Pool from "./pages/Pool";
 import Knowledge from "./pages/Knowledge";
+import KnowledgeItemDetail from "./pages/KnowledgeItemDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Knowledge />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/knowledge/:id"
+                element={
+                  <ProtectedRoute>
+                    <KnowledgeItemDetail />
                   </ProtectedRoute>
                 }
               />

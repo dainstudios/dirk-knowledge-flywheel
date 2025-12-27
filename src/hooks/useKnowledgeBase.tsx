@@ -20,6 +20,10 @@ export interface KnowledgeItem {
   actionability: string | null;
   timeliness: string | null;
   created_at: string;
+  // Infographic fields
+  infographic_url: string | null;
+  infographic_generated_at: string | null;
+  infographic_type: string | null;
 }
 
 export interface KnowledgeFilters {
@@ -35,7 +39,7 @@ export function useKnowledgeBase() {
     queryFn: async (): Promise<KnowledgeItem[]> => {
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, created_at')
+        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, created_at, infographic_url, infographic_generated_at, infographic_type')
         .eq('status', 'knowledge')
         .order('created_at', { ascending: false });
 
