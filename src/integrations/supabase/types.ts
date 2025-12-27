@@ -156,6 +156,7 @@ export type Database = {
           infographic_type: string | null
           infographic_url: string | null
           key_findings: string[] | null
+          key_insights: string[] | null
           methodology: string | null
           pdf_data: string | null
           pdf_filename: string | null
@@ -208,6 +209,7 @@ export type Database = {
           infographic_type?: string | null
           infographic_url?: string | null
           key_findings?: string[] | null
+          key_insights?: string[] | null
           methodology?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
@@ -260,6 +262,7 @@ export type Database = {
           infographic_type?: string | null
           infographic_url?: string | null
           key_findings?: string[] | null
+          key_insights?: string[] | null
           methodology?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
