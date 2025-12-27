@@ -66,6 +66,13 @@ const corsHeaders = {
 // TYPES
 // =============================================================================
 
+type PostOption = 
+  | 'summary_only'
+  | 'summary_quick'
+  | 'summary_premium'
+  | 'infographic_quick'
+  | 'infographic_premium';
+
 interface ProcessActionRequest {
   item_id: string;
   actions: {
@@ -75,6 +82,7 @@ interface ProcessActionRequest {
     newsletter?: boolean;
     keep?: boolean;
   };
+  post_option?: PostOption;
   custom_message?: string;
 }
 
@@ -189,28 +197,18 @@ function validateSlackCompliance(messageText: string): { valid: boolean; violati
 // DETERMINISTIC SLACK RENDERER
 // =============================================================================
 
-function renderSlackMessage(item: any, content: FormattedContent): SlackMessage {
+function renderSlackMessage(item: any, content: FormattedContent, postOption?: PostOption): SlackMessage {
   const sourceUrl = item.google_drive_url || item.url || null;
+  const infographicUrl = item.infographic_url || null;
+  
+  // Determine what to include based on post_option
+  const isInfographicOnly = postOption === 'infographic_quick' || postOption === 'infographic_premium';
+  const includeSummary = !isInfographicOnly;
+  const includeInfographic = postOption !== 'summary_only' && infographicUrl;
   
   // Ensure exactly 5 findings, with proper format
   const findings = ensureFiveFindings(content.key_findings);
   
-  // Build message text with EXACT template structure
-  let messageText = "";
-  
-  // Section: Context
-  messageText += `*Context*\n${sanitizeContext(content.context)}\n\n`;
-  
-  // Section: Top 5 Findings (numbered, NO bullets)
-  messageText += `*Top 5 Findings*\n`;
-  findings.forEach((finding, index) => {
-    messageText += `${index + 1}. ${sanitizeFinding(finding)}\n\n`;
-  });
-  
-  // Section: Why it matters for DAIN
-  messageText += `*Why it matters for DAIN*\n${content.dain_relevance}`;
-  
-  // Build Slack blocks
   const blocks: any[] = [
     // Header: sparkles emoji + article title (NEVER tags/ratings)
     {
@@ -221,15 +219,42 @@ function renderSlackMessage(item: any, content: FormattedContent): SlackMessage 
         emoji: true,
       },
     },
-    // Main content section
-    {
+  ];
+  
+  // Add infographic image if available and requested
+  if (includeInfographic) {
+    blocks.push({
+      type: "image",
+      image_url: infographicUrl,
+      alt_text: `Infographic for ${item.title}`,
+    });
+  }
+  
+  // Add summary content if not infographic-only
+  if (includeSummary) {
+    // Build message text with EXACT template structure
+    let messageText = "";
+    
+    // Section: Context
+    messageText += `*Context*\n${sanitizeContext(content.context)}\n\n`;
+    
+    // Section: Top 5 Findings (numbered, NO bullets)
+    messageText += `*Top 5 Findings*\n`;
+    findings.forEach((finding, index) => {
+      messageText += `${index + 1}. ${sanitizeFinding(finding)}\n\n`;
+    });
+    
+    // Section: Why it matters for DAIN
+    messageText += `*Why it matters for DAIN*\n${content.dain_relevance}`;
+    
+    blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
         text: messageText,
       },
-    },
-  ];
+    });
+  }
   
   // View Source button
   if (sourceUrl) {
@@ -454,7 +479,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: ProcessActionRequest = await req.json();
-    const { item_id, actions } = body;
+    const { item_id, actions, post_option } = body;
 
     if (!item_id) {
       return new Response(
@@ -471,9 +496,10 @@ serve(async (req) => {
     }
 
     console.log(`\n${"=".repeat(60)}`);
-    console.log(`PROCESS-ACTION v3.0 - CANONICAL SLACK TEMPLATE`);
+    console.log(`PROCESS-ACTION v3.1 - WITH INFOGRAPHIC SUPPORT`);
     console.log(`Item: ${item_id}`);
     console.log(`Actions: ${JSON.stringify(actions)}`);
+    console.log(`Post Option: ${post_option || 'summary_only (default)'}`);
     console.log(`${"=".repeat(60)}\n`);
 
     // Fetch the item
@@ -539,13 +565,24 @@ serve(async (req) => {
 
     // TEAM - Post to Slack with deterministic template
     if (actions.team) {
-      console.log("Action: TEAM (Slack with canonical template)");
+      console.log(`Action: TEAM (Slack with ${post_option || 'summary_only'})`);
+      console.log(`Infographic URL: ${item.infographic_url || 'none'}`);
+      
       try {
-        // Step 1: Extract content with AI
-        const content = await extractContentWithAI(item, googleApiKey);
+        // For infographic-only posts, we still need minimal content for fallback
+        const isInfographicOnly = post_option === 'infographic_quick' || post_option === 'infographic_premium';
         
-        // Step 2: Render with deterministic template
-        const message = renderSlackMessage(item, content);
+        // Step 1: Extract content with AI (skip for infographic-only if we have the URL)
+        let content: FormattedContent;
+        if (isInfographicOnly && item.infographic_url) {
+          // Use minimal fallback content for infographic-only posts
+          content = createFallbackContent(item);
+        } else {
+          content = await extractContentWithAI(item, googleApiKey);
+        }
+        
+        // Step 2: Render with deterministic template (includes infographic if available)
+        const message = renderSlackMessage(item, content, post_option);
         
         // Step 3: Validate compliance (log violations but don't block)
         const messageText = message.blocks
@@ -553,10 +590,11 @@ serve(async (req) => {
           .map((b: any) => b.text?.text || "")
           .join("\n");
         
-        const validation = validateSlackCompliance(messageText);
-        if (!validation.valid) {
-          console.warn("Template compliance violations:", validation.violations);
-          // We still post - the deterministic renderer should have fixed most issues
+        if (messageText) {
+          const validation = validateSlackCompliance(messageText);
+          if (!validation.valid) {
+            console.warn("Template compliance violations:", validation.violations);
+          }
         }
         
         // Step 4: Post to Slack

@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { usePool, PoolAction } from '@/hooks/usePool';
+import { usePool, PoolAction, PostOption } from '@/hooks/usePool';
 import { cn } from '@/lib/utils';
 
 type SelectableAction = 'trash' | 'post2team' | 'post2linkedin' | 'post2newsletter' | 'knowledge';
@@ -208,16 +208,19 @@ export default function Pool() {
   };
 
   // Handle Team post confirmation from modal
-  const handleTeamPostConfirm = (option: string) => {
+  const handleTeamPostConfirm = (option: PostOption) => {
     if (!currentItem) return;
 
     setIsTeamModalOpen(false);
     setExitingId(currentItem.id);
 
-    // All options go through processAction with team: true
-    // The backend will handle infographic inclusion based on what's available
+    // Pass the post_option to processAction so the backend knows what to include
     processAction(
-      { item_id: currentItem.id, actions: { team: true, trash: false, linkedin: false, newsletter: false, keep: false } },
+      { 
+        item_id: currentItem.id, 
+        actions: { team: true, trash: false, linkedin: false, newsletter: false, keep: false },
+        post_option: option,
+      },
       {
         onSuccess: () => {
           toast({ description: 'Shared to Team!' });
@@ -634,7 +637,7 @@ export default function Pool() {
           onConfirm={handleTeamPostConfirm}
           itemId={currentItem.id}
           itemTitle={currentItem.title}
-          existingInfographicUrl={null}
+          existingInfographicUrl={currentItem.infographic_url}
           isProcessing={isProcessing}
         />
       )}
