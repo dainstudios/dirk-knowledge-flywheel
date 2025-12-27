@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -11,6 +10,7 @@ import {
   Loader2,
   CheckCircle,
   RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 
 interface AskSource {
@@ -175,85 +175,81 @@ export function AskAITab() {
 
       {/* Response */}
       {response && !isAsking && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Answer Card */}
-          <Card className="p-6 border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-foreground">AI Answer</h3>
+          <Card className="p-4 border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-foreground text-sm">AI Answer</h3>
             </div>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              {response.answer.split('\n').map((line, i) => {
-                if (!line.trim()) return <br key={i} />;
+            <div className="text-sm text-foreground leading-relaxed space-y-2">
+              {response.answer.split('\n').map((line, i, arr) => {
+                // Skip consecutive empty lines
+                if (!line.trim() && arr[i - 1] && !arr[i - 1].trim()) return null;
+                if (!line.trim()) return <div key={i} className="h-2" />;
                 if (line.startsWith('###')) {
-                  return <h4 key={i} className="text-base font-semibold mt-4 mb-2">{line.replace(/^###\s*/, '')}</h4>;
+                  return <h4 key={i} className="text-sm font-semibold mt-3 mb-1 text-foreground">{line.replace(/^###\s*/, '')}</h4>;
                 }
                 if (line.startsWith('##')) {
-                  return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.replace(/^##\s*/, '')}</h3>;
+                  return <h3 key={i} className="text-base font-semibold mt-3 mb-1 text-foreground">{line.replace(/^##\s*/, '')}</h3>;
                 }
                 if (line.startsWith('#')) {
-                  return <h2 key={i} className="text-xl font-semibold mt-4 mb-2">{line.replace(/^#\s*/, '')}</h2>;
+                  return <h2 key={i} className="text-lg font-semibold mt-3 mb-1 text-foreground">{line.replace(/^#\s*/, '')}</h2>;
                 }
                 if (line.startsWith('- ') || line.startsWith('* ')) {
                   return (
-                    <div key={i} className="flex items-start gap-2 ml-4">
-                      <span className="text-primary mt-1">•</span>
-                      <span>{line.replace(/^[-*]\s*/, '')}</span>
+                    <div key={i} className="flex items-start gap-1.5 ml-2">
+                      <span className="text-primary text-xs mt-1.5">•</span>
+                      <span className="flex-1">{line.replace(/^[-*]\s*/, '')}</span>
                     </div>
                   );
                 }
                 if (line.match(/^\d+\.\s/)) {
                   return (
-                    <div key={i} className="flex items-start gap-2 ml-4">
-                      <span className="text-muted-foreground font-medium">{line.match(/^(\d+\.)/)?.[1]}</span>
-                      <span>{line.replace(/^\d+\.\s*/, '')}</span>
+                    <div key={i} className="flex items-start gap-1.5 ml-2">
+                      <span className="text-muted-foreground text-xs font-medium min-w-[1.25rem]">{line.match(/^(\d+\.)/)?.[1]}</span>
+                      <span className="flex-1">{line.replace(/^\d+\.\s*/, '')}</span>
                     </div>
                   );
                 }
-                return <p key={i} className="mb-2 leading-relaxed">{line}</p>;
+                return <p key={i}>{line}</p>;
               })}
             </div>
           </Card>
 
-          {/* Sources Used */}
+          {/* Sources Used - Compact List */}
           {response.sources.length > 0 && (
-            <Card className="p-6">
-              <h3 className="font-semibold text-foreground mb-4">Sources Used</h3>
-              <div className="space-y-3">
-                {response.sources.map((source) => (
-                  <div key={source.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="flex-1 min-w-0">
-                      {source.url ? (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-primary hover:underline truncate block"
-                        >
-                          {source.title}
-                        </a>
-                      ) : (
-                        <span className="font-medium text-foreground truncate block">{source.title}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Badge variant="outline" className="text-xs">
-                        {Math.round(source.similarity * 100)}% match
-                      </Badge>
-                      {source.has_full_content && (
-                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Full Content
-                        </Badge>
-                      )}
-                    </div>
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground mb-2">
+                Sources ({response.sources.length}) · {response.stats.with_full_content} with full content
+              </p>
+              <div className="space-y-1">
+                {response.sources.map((source, idx) => (
+                  <div key={source.id} className="flex items-center gap-2 text-sm py-1">
+                    <span className="text-muted-foreground text-xs w-4">{idx + 1}.</span>
+                    {source.url ? (
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground hover:text-primary underline underline-offset-2 truncate flex-1 flex items-center gap-1"
+                      >
+                        {source.title}
+                        <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
+                      </a>
+                    ) : (
+                      <span className="text-foreground truncate flex-1">{source.title}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                      {Math.round(source.similarity * 100)}%
+                    </span>
+                    {source.has_full_content && (
+                      <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    )}
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-4">
-                {response.stats.total_searched} sources searched, {response.stats.with_full_content} with full content analyzed
-              </p>
-            </Card>
+            </div>
           )}
         </div>
       )}
