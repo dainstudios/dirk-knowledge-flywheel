@@ -11,13 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
-type PostOption = 
-  | 'summary_only'
-  | 'summary_quick'
-  | 'summary_premium'
-  | 'infographic_quick'
-  | 'infographic_premium';
+import type { PostOption } from '@/hooks/usePool';
 
 interface TeamPostModalProps {
   isOpen: boolean;
