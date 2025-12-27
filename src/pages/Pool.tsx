@@ -17,6 +17,7 @@ import {
   Check
 } from 'lucide-react';
 import { Header, MobileNav } from '@/components/common';
+import { TeamPostModal } from '@/components/pool';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -195,16 +196,26 @@ export default function Pool() {
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedActions, setSelectedActions] = useState<Set<SelectableAction>>(new Set());
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const currentItem = items[currentIndex];
   const totalItems = items.length;
 
-  // Handle Team button click - posts to Slack via processAction
+  // Handle Team button click - opens modal for posting options
   const handleTeamClick = () => {
     if (!currentItem || isProcessing) return;
+    setIsTeamModalOpen(true);
+  };
 
+  // Handle Team post confirmation from modal
+  const handleTeamPostConfirm = (option: string) => {
+    if (!currentItem) return;
+
+    setIsTeamModalOpen(false);
     setExitingId(currentItem.id);
 
+    // All options go through processAction with team: true
+    // The backend will handle infographic inclusion based on what's available
     processAction(
       { item_id: currentItem.id, actions: { team: true, trash: false, linkedin: false, newsletter: false, keep: false } },
       {
@@ -612,6 +623,19 @@ export default function Pool() {
       )}
 
       <MobileNav />
+
+      {/* Team Post Modal */}
+      {currentItem && (
+        <TeamPostModal
+          isOpen={isTeamModalOpen}
+          onClose={() => setIsTeamModalOpen(false)}
+          onConfirm={handleTeamPostConfirm}
+          itemId={currentItem.id}
+          itemTitle={currentItem.title}
+          existingInfographicUrl={null}
+          isProcessing={isProcessing}
+        />
+      )}
     </div>
   );
 }
