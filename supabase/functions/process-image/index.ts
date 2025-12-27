@@ -1,10 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Maximum file size to process (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 interface ProcessImageRequest {
   image_id?: string;
@@ -23,6 +27,66 @@ interface ImageAnalysis {
   use_cases: string[];
   dain_context: string;
   visual_style: string;
+}
+
+// Helper function to fetch image with fallback URLs
+async function fetchImageWithFallback(
+  storageUrl: string | null,
+  googleDriveUrl: string | null,
+  filename: string
+): Promise<{ buffer: ArrayBuffer; mimeType: string } | null> {
+  const urlsToTry: { url: string; name: string }[] = [];
+  
+  if (storageUrl) {
+    urlsToTry.push({ url: storageUrl, name: 'storage_url' });
+  }
+  
+  if (googleDriveUrl) {
+    // Convert Google Drive view URL to direct download URL
+    const driveMatch = googleDriveUrl.match(/\/d\/([^/]+)/);
+    if (driveMatch) {
+      const fileId = driveMatch[1];
+      urlsToTry.push({ 
+        url: `https://drive.google.com/uc?export=download&id=${fileId}`, 
+        name: 'google_drive_direct' 
+      });
+    }
+    urlsToTry.push({ url: googleDriveUrl, name: 'google_drive_url' });
+  }
+  
+  for (const { url, name } of urlsToTry) {
+    try {
+      console.log(`Trying to fetch from ${name}: ${url.substring(0, 100)}...`);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'image/*',
+        },
+      });
+      
+      if (!response.ok) {
+        console.log(`${name} returned ${response.status}: ${response.statusText}`);
+        continue;
+      }
+      
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const buffer = await response.arrayBuffer();
+      
+      // Check file size
+      if (buffer.byteLength > MAX_FILE_SIZE) {
+        console.log(`${name} file too large: ${buffer.byteLength} bytes (max ${MAX_FILE_SIZE})`);
+        continue;
+      }
+      
+      console.log(`Successfully fetched from ${name}: ${buffer.byteLength} bytes, type: ${contentType}`);
+      return { buffer, mimeType: contentType };
+    } catch (error) {
+      console.log(`Failed to fetch from ${name}:`, error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+  
+  console.log(`All fetch attempts failed for: ${filename}`);
+  return null;
 }
 
 serve(async (req) => {
@@ -90,15 +154,44 @@ serve(async (req) => {
 
     for (const image of imagesToProcess) {
       try {
-        console.log(`Processing image: ${image.id} - ${image.filename || 'unnamed'}`);
+        const filename = image.filename || 'unnamed';
+        console.log(`Processing image: ${image.id} - ${filename}`);
 
-        // Step 1: Analyze image with Gemini Vision
-        const imageUrl = image.storage_url || image.google_drive_url;
-        if (!imageUrl) {
-          results.push({ id: image.id, success: false, error: 'No image URL available' });
+        // Skip GIF files (often animated and cause issues)
+        const mimeType = image.mime_type || '';
+        if (mimeType === 'image/gif' || filename.toLowerCase().endsWith('.gif')) {
+          console.log(`Skipping GIF file: ${filename}`);
+          results.push({ id: image.id, success: false, error: 'GIF files not supported (often animated)' });
+          await supabase.from('images').update({
+            status: 'skipped',
+            processing_error: 'GIF files not supported'
+          }).eq('id', image.id);
           continue;
         }
 
+        // Fetch image with fallback
+        const imageData = await fetchImageWithFallback(
+          image.storage_url,
+          image.google_drive_url,
+          filename
+        );
+
+        if (!imageData) {
+          results.push({ id: image.id, success: false, error: 'Could not fetch image from any URL' });
+          await supabase.from('images').update({
+            status: 'error',
+            processing_error: 'Could not fetch image from any URL'
+          }).eq('id', image.id);
+          continue;
+        }
+
+        // Convert to base64 using Deno's built-in encoder (no stack overflow)
+        const base64Image = encodeBase64(imageData.buffer);
+        const detectedMimeType = imageData.mimeType.split(';')[0] || 'image/jpeg';
+
+        console.log(`Image fetched successfully, size: ${imageData.buffer.byteLength}, mime: ${detectedMimeType}`);
+
+        // Step 1: Analyze image with Gemini Vision
         const analysisPrompt = `Analyze this image in detail for use in a business consulting knowledge library.
 
 Return a JSON object with these exact fields:
@@ -121,6 +214,7 @@ RULES:
 - If you cannot determine something, use reasonable defaults
 - Return ONLY the JSON object, no markdown or explanation`;
 
+        // Use base64 approach directly (more reliable)
         const visionResponse = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`,
           {
@@ -132,11 +226,8 @@ RULES:
                   { text: analysisPrompt },
                   { 
                     inline_data: {
-                      mime_type: "image/jpeg",
-                    },
-                    file_data: {
-                      mime_type: "image/jpeg",
-                      file_uri: imageUrl
+                      mime_type: detectedMimeType,
+                      data: base64Image
                     }
                   }
                 ]
@@ -145,207 +236,94 @@ RULES:
           }
         );
 
-        // If file_uri doesn't work, try fetching the image and sending as base64
         if (!visionResponse.ok) {
-          console.log('Trying base64 approach for image analysis...');
-          
-          // Fetch the image
-          const imageResponse = await fetch(imageUrl);
-          if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch image: ${imageResponse.status}`);
-          }
-          
-          const imageBuffer = await imageResponse.arrayBuffer();
-          const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
-          const mimeType = image.mime_type || 'image/jpeg';
-
-          const base64VisionResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: analysisPrompt },
-                    { 
-                      inline_data: {
-                        mime_type: mimeType,
-                        data: base64Image
-                      }
-                    }
-                  ]
-                }]
-              })
-            }
-          );
-
-          if (!base64VisionResponse.ok) {
-            const errorText = await base64VisionResponse.text();
-            throw new Error(`Gemini Vision API error: ${errorText}`);
-          }
-
-          const visionData = await base64VisionResponse.json();
-          const analysisText = visionData.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (!analysisText) {
-            throw new Error('No analysis returned from Gemini Vision');
-          }
-
-          // Parse the JSON response
-          let analysis: ImageAnalysis;
-          try {
-            const cleanedText = analysisText.replace(/```json\n?|\n?```/g, '').trim();
-            analysis = JSON.parse(cleanedText);
-          } catch (parseError) {
-            console.error('Failed to parse analysis:', analysisText);
-            throw new Error('Failed to parse image analysis JSON');
-          }
-
-          console.log(`Analysis complete for ${image.id}:`, analysis.title);
-
-          // Step 2: Generate embedding from combined text
-          const embeddingText = [
-            analysis.title,
-            analysis.description,
-            analysis.key_insight,
-            analysis.dain_context,
-            ...(analysis.topic_tags || []),
-            ...(analysis.use_cases || []),
-            ...(analysis.data_points || [])
-          ].filter(Boolean).join(' ');
-
-          const embeddingResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${googleApiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: 'models/text-embedding-004',
-                content: { parts: [{ text: embeddingText }] }
-              })
-            }
-          );
-
-          if (!embeddingResponse.ok) {
-            const errorText = await embeddingResponse.text();
-            throw new Error(`Embedding API error: ${errorText}`);
-          }
-
-          const embeddingData = await embeddingResponse.json();
-          const embedding = embeddingData.embedding?.values;
-
-          if (!embedding) {
-            throw new Error('No embedding returned from API');
-          }
-
-          console.log(`Embedding generated for ${image.id}, dimensions: ${embedding.length}`);
-
-          // Step 3: Update the image record
-          const { error: updateError } = await supabase
-            .from('images')
-            .update({
-              title: analysis.title,
-              description: analysis.description,
-              chart_type: analysis.chart_type,
-              key_insight: analysis.key_insight,
-              data_points: analysis.data_points,
-              trends_and_patterns: analysis.trends_and_patterns,
-              topic_tags: analysis.topic_tags,
-              use_cases: analysis.use_cases,
-              dain_context: analysis.dain_context,
-              visual_style: analysis.visual_style,
-              embedding: `[${embedding.join(',')}]`,
-              status: 'processed',
-              processed_at: new Date().toISOString()
-            })
-            .eq('id', image.id);
-
-          if (updateError) {
-            throw new Error(`Failed to update image: ${updateError.message}`);
-          }
-
-          console.log(`Successfully processed image: ${image.id}`);
-          results.push({ id: image.id, success: true });
-        } else {
-          // Original approach worked
-          const visionData = await visionResponse.json();
-          const analysisText = visionData.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (!analysisText) {
-            throw new Error('No analysis returned from Gemini Vision');
-          }
-
-          let analysis: ImageAnalysis;
-          try {
-            const cleanedText = analysisText.replace(/```json\n?|\n?```/g, '').trim();
-            analysis = JSON.parse(cleanedText);
-          } catch (parseError) {
-            console.error('Failed to parse analysis:', analysisText);
-            throw new Error('Failed to parse image analysis JSON');
-          }
-
-          // Generate embedding
-          const embeddingText = [
-            analysis.title,
-            analysis.description,
-            analysis.key_insight,
-            analysis.dain_context,
-            ...(analysis.topic_tags || []),
-            ...(analysis.use_cases || []),
-            ...(analysis.data_points || [])
-          ].filter(Boolean).join(' ');
-
-          const embeddingResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${googleApiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: 'models/text-embedding-004',
-                content: { parts: [{ text: embeddingText }] }
-              })
-            }
-          );
-
-          if (!embeddingResponse.ok) {
-            const errorText = await embeddingResponse.text();
-            throw new Error(`Embedding API error: ${errorText}`);
-          }
-
-          const embeddingData = await embeddingResponse.json();
-          const embedding = embeddingData.embedding?.values;
-
-          if (!embedding) {
-            throw new Error('No embedding returned from API');
-          }
-
-          // Update the image record
-          const { error: updateError } = await supabase
-            .from('images')
-            .update({
-              title: analysis.title,
-              description: analysis.description,
-              chart_type: analysis.chart_type,
-              key_insight: analysis.key_insight,
-              data_points: analysis.data_points,
-              trends_and_patterns: analysis.trends_and_patterns,
-              topic_tags: analysis.topic_tags,
-              use_cases: analysis.use_cases,
-              dain_context: analysis.dain_context,
-              visual_style: analysis.visual_style,
-              embedding: `[${embedding.join(',')}]`,
-              status: 'processed',
-              processed_at: new Date().toISOString()
-            })
-            .eq('id', image.id);
-
-          if (updateError) {
-            throw new Error(`Failed to update image: ${updateError.message}`);
-          }
-
-          results.push({ id: image.id, success: true });
+          const errorText = await visionResponse.text();
+          throw new Error(`Gemini Vision API error (${visionResponse.status}): ${errorText.substring(0, 200)}`);
         }
+
+        const visionData = await visionResponse.json();
+        const analysisText = visionData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!analysisText) {
+          throw new Error('No analysis returned from Gemini Vision');
+        }
+
+        // Parse the JSON response
+        let analysis: ImageAnalysis;
+        try {
+          const cleanedText = analysisText.replace(/```json\n?|\n?```/g, '').trim();
+          analysis = JSON.parse(cleanedText);
+        } catch (parseError) {
+          console.error('Failed to parse analysis:', analysisText.substring(0, 500));
+          throw new Error('Failed to parse image analysis JSON');
+        }
+
+        console.log(`Analysis complete for ${image.id}:`, analysis.title);
+
+        // Step 2: Generate embedding from combined text
+        const embeddingText = [
+          analysis.title,
+          analysis.description,
+          analysis.key_insight,
+          analysis.dain_context,
+          ...(analysis.topic_tags || []),
+          ...(analysis.use_cases || []),
+          ...(analysis.data_points || [])
+        ].filter(Boolean).join(' ');
+
+        const embeddingResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${googleApiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'models/text-embedding-004',
+              content: { parts: [{ text: embeddingText }] }
+            })
+          }
+        );
+
+        if (!embeddingResponse.ok) {
+          const errorText = await embeddingResponse.text();
+          throw new Error(`Embedding API error: ${errorText}`);
+        }
+
+        const embeddingData = await embeddingResponse.json();
+        const embedding = embeddingData.embedding?.values;
+
+        if (!embedding) {
+          throw new Error('No embedding returned from API');
+        }
+
+        console.log(`Embedding generated for ${image.id}, dimensions: ${embedding.length}`);
+
+        // Step 3: Update the image record
+        const { error: updateError } = await supabase
+          .from('images')
+          .update({
+            title: analysis.title,
+            description: analysis.description,
+            chart_type: analysis.chart_type,
+            key_insight: analysis.key_insight,
+            data_points: analysis.data_points,
+            trends_and_patterns: analysis.trends_and_patterns,
+            topic_tags: analysis.topic_tags,
+            use_cases: analysis.use_cases,
+            dain_context: analysis.dain_context,
+            visual_style: analysis.visual_style,
+            embedding: `[${embedding.join(',')}]`,
+            status: 'processed',
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', image.id);
+
+        if (updateError) {
+          throw new Error(`Failed to update image: ${updateError.message}`);
+        }
+
+        console.log(`Successfully processed image: ${image.id}`);
+        results.push({ id: image.id, success: true });
+
       } catch (imageError) {
         console.error(`Error processing image ${image.id}:`, imageError);
         results.push({ 
