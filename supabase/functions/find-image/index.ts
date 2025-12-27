@@ -78,11 +78,11 @@ serve(async (req) => {
       throw new Error("No embedding returned from API");
     }
 
-    // Search for matching images
+    // Search for matching images - pass embedding as vector string format
     const { data: matchedImages, error: matchError } = await supabase.rpc(
       "match_images",
       {
-        query_embedding: JSON.stringify(queryEmbedding),
+        query_embedding: `[${queryEmbedding.join(",")}]`,
         match_threshold: 0.35,
         match_count: count,
         filter_chart_type: chart_type && chart_type !== "any" ? chart_type : null,
@@ -90,8 +90,8 @@ serve(async (req) => {
     );
 
     if (matchError) {
-      console.error("Match images error:", matchError);
-      throw matchError;
+      console.error("Match images error:", JSON.stringify(matchError));
+      throw new Error(`Match error: ${matchError.message || JSON.stringify(matchError)}`);
     }
 
     console.log("Found images:", matchedImages?.length || 0);
