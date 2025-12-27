@@ -190,40 +190,38 @@ function parseSummaryBullets(summary: string): string[] | null {
 }
 
 export default function Pool() {
-  const { items, isLoading, processAction, isProcessing, postToSlack, isPostingToSlack } = usePool();
+  const { items, isLoading, processAction, isProcessing } = usePool();
   const { toast } = useToast();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedActions, setSelectedActions] = useState<Set<SelectableAction>>(new Set());
-  const [postingTeamItemId, setPostingTeamItemId] = useState<string | null>(null);
 
   const currentItem = items[currentIndex];
   const totalItems = items.length;
 
-  // Handle Team button click - posts to Slack immediately
-  const handleTeamClick = async () => {
-    if (!currentItem || isPostingToSlack) return;
+  // Handle Team button click - posts to Slack via processAction
+  const handleTeamClick = () => {
+    if (!currentItem || isProcessing) return;
 
-    setPostingTeamItemId(currentItem.id);
     setExitingId(currentItem.id);
 
-    postToSlack(currentItem.id, {
-      onSuccess: () => {
-        toast({ description: 'Shared to Team!' });
-        setPostingTeamItemId(null);
-        setExitingId(null);
-        setSelectedActions(new Set());
-        if (currentIndex >= items.length - 1 && currentIndex > 0) {
-          setCurrentIndex(currentIndex - 1);
-        }
-      },
-      onError: (err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Failed to share';
-        toast({ description: message, variant: 'destructive' });
-        setPostingTeamItemId(null);
-        setExitingId(null);
-      },
-    });
+    processAction(
+      { item_id: currentItem.id, actions: { team: true, trash: false, linkedin: false, newsletter: false, keep: false } },
+      {
+        onSuccess: () => {
+          toast({ description: 'Shared to Team!' });
+          setExitingId(null);
+          setSelectedActions(new Set());
+          if (currentIndex >= items.length - 1 && currentIndex > 0) {
+            setCurrentIndex(currentIndex - 1);
+          }
+        },
+        onError: (err: Error) => {
+          toast({ description: err.message || 'Failed to share', variant: 'destructive' });
+          setExitingId(null);
+        },
+      }
+    );
   };
 
   // Toggle action selection with multi-select logic
@@ -507,7 +505,7 @@ export default function Pool() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {actionOptions.map(({ action, icon: Icon, label, selectedColor }) => {
                       const isSelected = selectedActions.has(action);
-                      const isTeamLoading = action === 'post2team' && postingTeamItemId === currentItem.id;
+                      const isTeamLoading = action === 'post2team' && isProcessing && exitingId === currentItem.id;
                       const isDisabled = isProcessing || isTeamLoading;
                       
                       return (
@@ -566,7 +564,7 @@ export default function Pool() {
           <div className="flex items-center gap-2 flex-wrap justify-center">
             {actionOptions.map(({ action, icon: Icon, label, selectedColor }) => {
               const isSelected = selectedActions.has(action);
-              const isTeamLoading = action === 'post2team' && postingTeamItemId === currentItem.id;
+              const isTeamLoading = action === 'post2team' && isProcessing && exitingId === currentItem.id;
               const isDisabled = isProcessing || isTeamLoading;
               
               return (

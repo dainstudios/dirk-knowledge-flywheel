@@ -10,7 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // CONFIGURATION
 // =============================================================================
 
-const SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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";
+const SLACK_WEBHOOK_URL = Deno.env.get('SLACK_WEBHOOK_URL')!;
 const GEMINI_MODEL = "gemini-3-flash-preview";
 
 // =============================================================================
