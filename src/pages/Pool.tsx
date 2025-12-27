@@ -206,9 +206,10 @@ export default function Pool() {
   const handleTeamClick = async () => {
     if (!currentItem || isPostingToSlack) return;
 
-    // Verify session is still valid (avoids silent 401s)
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Refresh session to ensure fresh token (avoids silent 401s from stale tokens)
+    const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError || !session) {
+      console.log('Session refresh failed:', refreshError?.message);
       toast({
         description: 'Session expired. Please log in again.',
         variant: 'destructive',
@@ -216,6 +217,7 @@ export default function Pool() {
       navigate('/auth');
       return;
     }
+    console.log('Session refreshed, token valid until:', new Date(session.expires_at! * 1000).toISOString());
 
     setPostingTeamItemId(currentItem.id);
     setExitingId(currentItem.id);

@@ -137,10 +137,17 @@ export function usePool() {
   // Post to Slack mutation
   const postToSlack = useMutation({
     mutationFn: async (itemId: string): Promise<PostToSlackResponse> => {
+      // Log session state for debugging
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('postToSlack - Session exists:', !!session);
+      console.log('postToSlack - Token prefix:', session?.access_token?.substring(0, 20));
+      
       const { data, error } = await supabase.functions.invoke('post-to-slack', {
         body: { item_id: itemId },
       });
 
+      console.log('postToSlack - Response:', { data, error });
+      
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       return data as PostToSlackResponse;
