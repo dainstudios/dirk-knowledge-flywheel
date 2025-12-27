@@ -102,13 +102,20 @@ export function usePool() {
   // New multi-select action mutation
   const processAction = useMutation({
     mutationFn: async (payload: ProcessActionPayload): Promise<ProcessActionResponse> => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Session expired. Please log in again.');
+      }
+
       const { data, error } = await supabase.functions.invoke('process-action', {
         body: payload,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) {
         console.error('Process action error:', error);
-        // Check if it's an auth error
         if (error.message?.includes('401') || error.message?.toLowerCase().includes('unauthorized')) {
           throw new Error('Session expired. Please log in again.');
         }
