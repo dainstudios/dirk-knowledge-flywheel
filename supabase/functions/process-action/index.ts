@@ -127,11 +127,12 @@ REQUIRED JSON OUTPUT:
 STRICT RULES:
 1. Context MUST begin with author/org name - never "This report" or "This study"
 2. If author unknown, use organization from the Organization field
-3. Each finding MUST have format: **Label:** then details
-4. Each finding MUST include a number, percentage, or specific metric
-5. Exactly 5 findings - no more, no less
-6. No bullet points (•), no "Tier" ratings, no generic labels
-7. Extract surprising/non-obvious insights, not generic observations
+3. AUTHOR LIMIT: If there are more than 3 authors, list only the first 3 names followed by " +more" (e.g., "Jiahao Qiu, Xuan Qi, Tongcheng Zhang +more")
+4. Each finding MUST have format: **Label:** then details
+5. Each finding MUST include a number, percentage, or specific metric
+6. Exactly 5 findings - no more, no less
+7. No bullet points (•), no "Tier" ratings, no generic labels
+8. Extract surprising/non-obvious insights, not generic observations
 
 Return ONLY the JSON object. No markdown, no explanation, no code blocks.`;
 

@@ -151,6 +151,9 @@ export type Database = {
           google_drive_url: string | null
           id: string
           industries: string[] | null
+          infographic_generated_at: string | null
+          infographic_style: string | null
+          infographic_url: string | null
           key_findings: string[] | null
           methodology: string | null
           pdf_data: string | null
@@ -199,6 +202,9 @@ export type Database = {
           google_drive_url?: string | null
           id?: string
           industries?: string[] | null
+          infographic_generated_at?: string | null
+          infographic_style?: string | null
+          infographic_url?: string | null
           key_findings?: string[] | null
           methodology?: string | null
           pdf_data?: string | null
@@ -247,6 +253,9 @@ export type Database = {
           google_drive_url?: string | null
           id?: string
           industries?: string[] | null
+          infographic_generated_at?: string | null
+          infographic_style?: string | null
+          infographic_url?: string | null
           key_findings?: string[] | null
           methodology?: string | null
           pdf_data?: string | null
