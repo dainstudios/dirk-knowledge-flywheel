@@ -139,6 +139,7 @@ export type Database = {
           capture_source: string
           content: string | null
           content_type: string | null
+          context: string | null
           created_at: string
           curated_at: string | null
           dain_context: string | null
@@ -150,6 +151,7 @@ export type Database = {
           google_drive_url: string | null
           id: string
           industries: string[] | null
+          key_findings: string[] | null
           methodology: string | null
           pdf_data: string | null
           pdf_filename: string | null
@@ -185,6 +187,7 @@ export type Database = {
           capture_source?: string
           content?: string | null
           content_type?: string | null
+          context?: string | null
           created_at?: string
           curated_at?: string | null
           dain_context?: string | null
@@ -196,6 +199,7 @@ export type Database = {
           google_drive_url?: string | null
           id?: string
           industries?: string[] | null
+          key_findings?: string[] | null
           methodology?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
@@ -231,6 +235,7 @@ export type Database = {
           capture_source?: string
           content?: string | null
           content_type?: string | null
+          context?: string | null
           created_at?: string
           curated_at?: string | null
           dain_context?: string | null
@@ -242,6 +247,7 @@ export type Database = {
           google_drive_url?: string | null
           id?: string
           industries?: string[] | null
+          key_findings?: string[] | null
           methodology?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
