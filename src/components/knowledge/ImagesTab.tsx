@@ -24,11 +24,18 @@ import {
   Loader2,
   ExternalLink,
   Copy,
-  X,
   RefreshCw,
   Lightbulb,
   TrendingUp,
   Sparkles,
+  BarChart3,
+  LineChart,
+  PieChart,
+  GitBranch,
+  LayoutGrid,
+  Grid3X3,
+  Table,
+  FileImage,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -57,49 +64,107 @@ interface ImageResponse {
   };
 }
 
-function ImageCard({ image, onClick }: { image: ImageResult; onClick: () => void }) {
-  const imageUrl = image.storage_url || image.url;
+// Convert Google Drive view links to embeddable URLs
+function getDisplayUrl(image: ImageResult): string | null {
+  if (image.storage_url) return image.storage_url;
+  
+  if (image.google_drive_url) {
+    // Extract file ID from various Google Drive URL formats
+    const patterns = [
+      /\/d\/([a-zA-Z0-9_-]+)/,           // /d/FILE_ID/
+      /id=([a-zA-Z0-9_-]+)/,             // ?id=FILE_ID
+      /\/file\/d\/([a-zA-Z0-9_-]+)/,     // /file/d/FILE_ID
+    ];
+    
+    for (const pattern of patterns) {
+      const match = image.google_drive_url.match(pattern);
+      if (match) {
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      }
+    }
+  }
+  
+  if (image.url) return image.url;
+  return null;
+}
+
+// Get chart type icon
+function getChartIcon(chartType: string | null) {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    bar_chart: BarChart3,
+    line_graph: LineChart,
+    pie_chart: PieChart,
+    diagram: GitBranch,
+    framework: LayoutGrid,
+    matrix: Grid3X3,
+    table: Table,
+    infographic: FileImage,
+  };
+  return chartType ? iconMap[chartType] || ImageIcon : ImageIcon;
+}
+
+function ImageCard({ image, onClick, index }: { image: ImageResult; onClick: () => void; index: number }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const imageUrl = getDisplayUrl(image);
+  const ChartIcon = getChartIcon(image.chart_type);
 
   return (
     <Card
-      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+      className="group overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:shadow-xl animate-fade-in"
+      style={{ animationDelay: `${index * 50}ms` }}
       onClick={onClick}
     >
       {/* Image thumbnail */}
       <div className="aspect-video bg-muted relative overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={image.title}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+        {imageUrl && !hasError ? (
+          <>
+            {/* Loading skeleton */}
+            {!isLoaded && (
+              <div className="absolute inset-0 bg-muted animate-pulse" />
+            )}
+            <img
+              src={imageUrl}
+              alt={image.title}
+              className={`w-full h-full object-cover transition-all duration-500 ${
+                isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+              }`}
+              onLoad={() => setIsLoaded(true)}
+              onError={() => setHasError(true)}
+            />
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
+          <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50">
+            <ChartIcon className="h-12 w-12 text-muted-foreground/40 mb-2" />
+            <span className="text-xs text-muted-foreground/60 capitalize">
+              {image.chart_type?.replace(/_/g, ' ') || 'Image'}
+            </span>
           </div>
         )}
+        
+        {/* Match percentage badge - positioned on image */}
+        <div className="absolute top-2 right-2">
+          <Badge 
+            className="bg-primary text-primary-foreground border-0 shadow-lg text-xs font-semibold"
+          >
+            {image.relevance}%
+          </Badge>
+        </div>
       </div>
 
       {/* Info */}
       <div className="p-3">
-        <h3 className="font-medium text-foreground text-sm truncate mb-2">
+        <h3 className="font-medium text-foreground text-sm truncate mb-2 group-hover:text-primary transition-colors">
           {image.title}
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
           {image.chart_type && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs capitalize bg-secondary/80">
               {image.chart_type.replace(/_/g, ' ')}
             </Badge>
           )}
-          <Badge
-            variant="outline"
-            className="bg-primary/10 text-primary border-primary/30 text-xs"
-          >
-            {image.relevance}% match
-          </Badge>
         </div>
       </div>
     </Card>
@@ -115,9 +180,13 @@ function ImageModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  
   if (!image) return null;
 
-  const imageUrl = image.storage_url || image.url;
+  const imageUrl = getDisplayUrl(image);
+  const ChartIcon = getChartIcon(image.chart_type);
 
   const copyLink = async () => {
     if (imageUrl) {
@@ -136,16 +205,28 @@ function ImageModal({
             </DialogHeader>
 
             {/* Image */}
-            <div className="mt-4 rounded-lg overflow-hidden bg-muted">
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={image.title}
-                  className="w-full h-auto max-h-[400px] object-contain"
-                />
+            <div className="mt-4 rounded-xl overflow-hidden bg-muted relative">
+              {imageUrl && !hasError ? (
+                <>
+                  {!isLoaded && (
+                    <Skeleton className="w-full h-[300px]" />
+                  )}
+                  <img
+                    src={imageUrl}
+                    alt={image.title}
+                    className={`w-full h-auto max-h-[400px] object-contain transition-opacity duration-300 ${
+                      isLoaded ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    onLoad={() => setIsLoaded(true)}
+                    onError={() => setHasError(true)}
+                  />
+                </>
               ) : (
-                <div className="h-48 flex items-center justify-center">
-                  <ImageIcon className="h-16 w-16 text-muted-foreground/30" />
+                <div className="h-48 flex flex-col items-center justify-center">
+                  <ChartIcon className="h-16 w-16 text-muted-foreground/30 mb-2" />
+                  <span className="text-sm text-muted-foreground/60 capitalize">
+                    {image.chart_type?.replace(/_/g, ' ') || 'Image unavailable'}
+                  </span>
                 </div>
               )}
             </div>
@@ -422,16 +503,17 @@ export function ImagesTab() {
             </Card>
           ) : (
             <>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="font-semibold text-foreground">
                   Found {response.images.length} image{response.images.length !== 1 ? 's' : ''}
                 </h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {response.images.map((image) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {response.images.map((image, index) => (
                   <ImageCard
                     key={image.id}
                     image={image}
+                    index={index}
                     onClick={() => setSelectedImage(image)}
                   />
                 ))}
