@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.post-to-slack]
 verify_jwt = false
+
+[functions.proxy-image]
+verify_jwt = false
