@@ -64,8 +64,11 @@ interface ImageResponse {
   };
 }
 
-// Convert Google Drive view links to embeddable URLs
+const SUPABASE_URL = 'https://wcdtdjztzrlvwkmlwpgw.supabase.co';
+
+// Convert Google Drive view links to proxy URLs
 function getDisplayUrl(image: ImageResult): string | null {
+  // Use storage URL directly if available
   if (image.storage_url) return image.storage_url;
   
   if (image.google_drive_url) {
@@ -79,7 +82,8 @@ function getDisplayUrl(image: ImageResult): string | null {
     for (const pattern of patterns) {
       const match = image.google_drive_url.match(pattern);
       if (match) {
-        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        // Use edge function proxy to bypass CORS
+        return `${SUPABASE_URL}/functions/v1/proxy-image?id=${match[1]}`;
       }
     }
   }
