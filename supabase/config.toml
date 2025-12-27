@@ -1,19 +1,19 @@
 project_id = "wcdtdjztzrlvwkmlwpgw"
 
 [functions.generate-search-embedding]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ask-knowledge]
-verify_jwt = true
+verify_jwt = false
 
 [functions.find-quote]
 verify_jwt = false
 
 [functions.find-image]
-verify_jwt = true
+verify_jwt = false
 
 [functions.process-action]
 verify_jwt = false
 
 [functions.post-to-slack]
-verify_jwt = true
+verify_jwt = false
