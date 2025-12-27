@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Trash2, 
   Users, 
@@ -192,6 +193,7 @@ function parseSummaryBullets(summary: string): string[] | null {
 export default function Pool() {
   const { items, isLoading, processAction, isProcessing, postToSlack, isPostingToSlack } = usePool();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedActions, setSelectedActions] = useState<Set<SelectableAction>>(new Set());
@@ -262,8 +264,19 @@ export default function Pool() {
     });
   };
 
-  const handleProcessItem = () => {
+  const handleProcessItem = async () => {
     if (!currentItem || isProcessing || selectedActions.size === 0) return;
+
+    // Verify session is still valid
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        description: 'Session expired. Please log in again.',
+        variant: 'destructive',
+      });
+      navigate('/auth');
+      return;
+    }
 
     setExitingId(currentItem.id);
     
@@ -292,12 +305,18 @@ export default function Pool() {
               setCurrentIndex(currentIndex - 1);
             }
           },
-          onError: () => {
+          onError: (error: Error) => {
+            const isAuthError = error.message?.toLowerCase().includes('session') || 
+                                error.message?.toLowerCase().includes('unauthorized') ||
+                                error.message?.toLowerCase().includes('401');
             toast({ 
-              description: 'Action failed. Please try again.',
+              description: isAuthError ? 'Session expired. Please log in again.' : (error.message || 'Action failed. Please try again.'),
               variant: 'destructive' 
             });
             setExitingId(null);
+            if (isAuthError) {
+              navigate('/auth');
+            }
           },
         }
       );

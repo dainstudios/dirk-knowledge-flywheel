@@ -106,8 +106,18 @@ export function usePool() {
         body: payload,
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        console.error('Process action error:', error);
+        // Check if it's an auth error
+        if (error.message?.includes('401') || error.message?.toLowerCase().includes('unauthorized')) {
+          throw new Error('Session expired. Please log in again.');
+        }
+        throw error;
+      }
+      if (data?.error) {
+        console.error('Process action data error:', data.error);
+        throw new Error(data.error);
+      }
       return data as ProcessActionResponse;
     },
     onMutate: async ({ item_id }) => {
