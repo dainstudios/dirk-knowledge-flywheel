@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   Trash2, 
@@ -192,7 +192,6 @@ function parseSummaryBullets(summary: string): string[] | null {
 export default function Pool() {
   const { items, isLoading, processAction, isProcessing, postToSlack, isPostingToSlack } = usePool();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedActions, setSelectedActions] = useState<Set<SelectableAction>>(new Set());

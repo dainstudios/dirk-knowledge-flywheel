@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Link as LinkIcon, Check, FileText, FolderOpen, Clock, ExternalLink } from 'lucide-react';
 import { z } from 'zod';
 import { Header, MobileNav } from '@/components/common';
@@ -22,7 +22,6 @@ const MAX_NOTES_LENGTH = 500;
 
 export default function Capture() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const urlInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,15 +70,13 @@ export default function Capture() {
     
     if (!validateUrl(url)) return;
     
-    // Re-verify session before making API call
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
+    // Use user from useAuth() - ProtectedRoute already ensures we're logged in
+    if (!user) {
       toast({
-        title: 'Session expired',
-        description: 'Please log in again to continue.',
+        title: 'Error',
+        description: 'Unable to identify user. Please refresh the page.',
         variant: 'destructive',
       });
-      navigate('/auth');
       return;
     }
 
@@ -88,12 +85,12 @@ export default function Capture() {
     try {
       const { error } = await supabase.from('knowledge_items').insert({
         url: url.trim(),
-        title: url.trim(), // Required field - will be updated by processing
+        title: url.trim(),
         user_notes: notes.trim() || null,
         fast_track: fastTrack,
         status: 'pending',
         capture_source: 'web_ui',
-        user_id: session.user.id,
+        user_id: user.id,
       });
 
       if (error) {
