@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Link as LinkIcon, FileText, FolderOpen, Clock, ExternalLink, Video } from 'lucide-react';
+import { ArrowLeft, Loader2, Link as LinkIcon, FileText, FolderOpen, Clock, ExternalLink, Video, CheckCircle2, XCircle } from 'lucide-react';
 import { z } from 'zod';
 import { Header, MobileNav } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -28,7 +28,6 @@ function isYouTubeUrl(url: string): boolean {
 
 export default function Capture() {
   const { user, loading } = useAuth();
-  const { toast } = useToast();
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   const [url, setUrl] = useState('');
@@ -37,6 +36,7 @@ export default function Capture() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
   const [isYouTube, setIsYouTube] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Auto-focus URL input on mount
   useEffect(() => {
@@ -80,13 +80,11 @@ export default function Capture() {
     
     // Use user from useAuth() - ProtectedRoute already ensures we're logged in
     if (!user) {
-      toast({
-        title: 'Error',
-        description: 'Unable to identify user. Please refresh the page.',
-        variant: 'destructive',
-      });
+      setFeedback({ type: 'error', message: 'Unable to identify user. Please refresh the page.' });
       return;
     }
+
+    setFeedback(null);
 
     setIsSubmitting(true);
 
@@ -110,22 +108,14 @@ export default function Capture() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          // Check for duplicate
           if (errorText.includes('duplicate') || errorText.includes('already')) {
-            toast({
-              title: "Already captured",
-              description: "You've already captured this video.",
-              variant: 'destructive',
-            });
+            setFeedback({ type: 'error', message: "You've already captured this video." });
             return;
           }
           throw new Error(`Webhook error: ${response.status}`);
         }
 
-        // Success for YouTube
-        toast({
-          description: "🎬 YouTube video queued for processing",
-        });
+        setFeedback({ type: 'success', message: '🎬 YouTube video queued for processing' });
       } else {
         // Regular URL - use existing Supabase flow
         const { error } = await supabase.from('knowledge_items').insert({
@@ -139,23 +129,15 @@ export default function Capture() {
         });
 
         if (error) {
-          // Check for duplicate URL error
           if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
-            toast({
-              title: "Already captured",
-              description: "You've already captured this article.",
-              variant: 'destructive',
-            });
+            setFeedback({ type: 'error', message: "You've already captured this article." });
           } else {
             throw error;
           }
           return;
         }
 
-        // Success for regular URL
-        toast({
-          description: "✓ Added to pool for processing",
-        });
+        setFeedback({ type: 'success', message: '✓ Added to pool for processing' });
       }
 
       // Clear form
@@ -167,11 +149,7 @@ export default function Capture() {
 
     } catch (error) {
       console.error('Capture error:', error);
-      toast({
-        title: 'Capture failed',
-        description: 'Something went wrong. Please try again.',
-        variant: 'destructive',
-      });
+      setFeedback({ type: 'error', message: 'Something went wrong. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -298,6 +276,24 @@ export default function Capture() {
                       'Capture'
                     )}
                   </Button>
+
+                  {/* Inline Feedback Message */}
+                  {feedback && (
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
+                        feedback.type === 'success'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-destructive/10 text-destructive border border-destructive/20'
+                      }`}
+                    >
+                      {feedback.type === 'success' ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <XCircle className="h-4 w-4 shrink-0" />
+                      )}
+                      <span>{feedback.message}</span>
+                    </div>
+                  )}
                 </form>
               </TabsContent>
 
