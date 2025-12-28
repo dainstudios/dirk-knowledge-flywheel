@@ -97,6 +97,7 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const googleApiKey = Deno.env.get('GOOGLE_API_KEY')!;
 
@@ -104,28 +105,64 @@ serve(async (req) => {
       throw new Error('GOOGLE_API_KEY not configured');
     }
 
+    // =========================================================================
+    // AUTH VERIFICATION - Verify user owns images before processing
+    // =========================================================================
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No Authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create RLS-enforced client using user's JWT
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error('Auth verification failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
+
+    // Create admin client for privileged operations (after auth verified)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { image_id, batch = false, limit = 5 }: ProcessImageRequest = await req.json();
 
-    console.log('Process image request:', { image_id, batch, limit });
+    console.log('Process image request:', { image_id, batch, limit, user_id: user.id });
 
-    // Get images to process
+    // Get images to process - use RLS-enforced client to verify ownership
     let imagesToProcess: any[] = [];
 
     if (image_id) {
-      // Process single image
-      const { data, error } = await supabase
+      // Process single image - verify ownership via RLS
+      const { data, error } = await supabaseAuth
         .from('images')
         .select('*')
         .eq('id', image_id)
         .single();
       
-      if (error) throw new Error(`Image not found: ${error.message}`);
+      if (error) {
+        console.error(`Image not found or not owned by user: ${error.message}`);
+        return new Response(
+          JSON.stringify({ error: 'Image not found or access denied' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       imagesToProcess = [data];
     } else if (batch) {
-      // Process unprocessed images (no embedding)
-      const { data, error } = await supabase
+      // Process unprocessed images - RLS ensures only user's images
+      const { data, error } = await supabaseAuth
         .from('images')
         .select('*')
         .is('embedding', null)
