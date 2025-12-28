@@ -38,7 +38,7 @@ interface InfographicSectionProps {
 }
 
 const QUICK_MESSAGES = ['Preparing content...', 'Generating visual...'];
-const PREMIUM_MESSAGES = [
+const DETAILED_MESSAGES = [
   'Fetching document...',
   'Analyzing content...',
   'Extracting themes...',
@@ -55,7 +55,7 @@ export function InfographicSection({
 }: InfographicSectionProps) {
   const { session } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatingType, setGeneratingType] = useState<'quick' | 'premium' | null>(null);
+  const [generatingType, setGeneratingType] = useState<'quick' | 'detailed' | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusIndex, setStatusIndex] = useState(0);
   const [isImageExpanded, setIsImageExpanded] = useState(false);
@@ -64,7 +64,7 @@ export function InfographicSection({
   useEffect(() => {
     if (!isGenerating || !generatingType) return;
 
-    const messages = generatingType === 'quick' ? QUICK_MESSAGES : PREMIUM_MESSAGES;
+    const messages = generatingType === 'quick' ? QUICK_MESSAGES : DETAILED_MESSAGES;
     setStatusMessage(messages[0]);
     setStatusIndex(0);
 
@@ -79,7 +79,7 @@ export function InfographicSection({
     return () => clearInterval(interval);
   }, [isGenerating, generatingType]);
 
-  const handleGenerate = async (type: 'quick' | 'premium') => {
+  const handleGenerate = async (type: 'quick' | 'detailed') => {
     setIsGenerating(true);
     setGeneratingType(type);
 
@@ -217,13 +217,13 @@ export function InfographicSection({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleGenerate('quick')}>
+              <DropdownMenuItem onClick={() => handleGenerate('quick')}>
                   <Rocket className="h-4 w-4 mr-2" />
                   Quick (~15 sec)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleGenerate('premium')}>
+                <DropdownMenuItem onClick={() => handleGenerate('detailed')}>
                   <Star className="h-4 w-4 mr-2" />
-                  Premium (~60 sec)
+                  Detailed (~60 sec)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -288,11 +288,11 @@ export function InfographicSection({
           </Button>
         </Card>
 
-        {/* Premium Card */}
+        {/* Detailed Card */}
         <Card className="p-4 border-2 border-transparent hover:border-primary/30 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <Star className="h-5 w-5 text-primary" />
-            <h4 className="font-medium text-foreground">Premium</h4>
+            <h4 className="font-medium text-foreground">Detailed</h4>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
             Rich ecosystem diagram
@@ -300,7 +300,7 @@ export function InfographicSection({
             <span className="text-xs">~60 seconds</span>
           </p>
           <Button
-            onClick={() => handleGenerate('premium')}
+            onClick={() => handleGenerate('detailed')}
             className="w-full"
             size="sm"
           >

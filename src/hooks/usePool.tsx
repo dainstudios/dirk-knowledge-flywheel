@@ -39,9 +39,9 @@ export type PoolAction = 'trash' | 'post2team' | 'post2linkedin' | 'post2newslet
 export type PostOption = 
   | 'summary_only'
   | 'summary_quick'
-  | 'summary_premium'
+  | 'summary_detailed'
   | 'infographic_quick'
-  | 'infographic_premium';
+  | 'infographic_detailed';
 
 export interface ProcessActionPayload {
   item_id: string;
