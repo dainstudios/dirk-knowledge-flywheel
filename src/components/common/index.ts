@@ -5,3 +5,4 @@ export { ProtectedRoute } from './ProtectedRoute';
 export { MobileNav } from './MobileNav';
 export { ErrorBoundary } from './ErrorBoundary';
 export { FormattedText } from './FormattedText';
+export { AccessDenied } from './AccessDenied';

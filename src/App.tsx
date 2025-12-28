@@ -11,6 +11,7 @@ import Capture from "./pages/Capture";
 import Pool from "./pages/Pool";
 import Knowledge from "./pages/Knowledge";
 import KnowledgeItemDetail from "./pages/KnowledgeItemDetail";
+import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,28 +28,12 @@ const App = () => (
               {/* Public routes */}
               <Route path="/auth" element={<Login />} />
               
-              {/* Protected routes */}
+              {/* Protected routes - All users */}
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
                     <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/capture"
-                element={
-                  <ProtectedRoute>
-                    <Capture />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/pool"
-                element={
-                  <ProtectedRoute>
-                    <Pool />
                   </ProtectedRoute>
                 }
               />
@@ -65,6 +50,34 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <KnowledgeItemDetail />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Protected routes - Contributor+ */}
+              <Route
+                path="/capture"
+                element={
+                  <ProtectedRoute requiredRole="contributor">
+                    <Capture />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/pool"
+                element={
+                  <ProtectedRoute requiredRole="contributor">
+                    <Pool />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Protected routes - Admin only */}
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminUsers />
                   </ProtectedRoute>
                 }
               />

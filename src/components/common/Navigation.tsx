@@ -1,18 +1,38 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen, Users } from 'lucide-react';
+import { useRoles, type AppRole } from '@/hooks/useRoles';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  minRole?: AppRole;
+}
+
+const navItems: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/capture', label: 'Capture', icon: PlusCircle },
-  { to: '/pool', label: 'Pool', icon: Layers },
+  { to: '/capture', label: 'Capture', icon: PlusCircle, minRole: 'contributor' },
+  { to: '/pool', label: 'Pool', icon: Layers, minRole: 'contributor' },
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
+  { to: '/admin/users', label: 'Users', icon: Users, minRole: 'admin' },
 ];
 
 export function Navigation() {
+  const { hasRole, roleLoading } = useRoles();
+
+  if (roleLoading) {
+    return <nav className="hidden md:flex items-center gap-1" />;
+  }
+
+  const visibleItems = navItems.filter((item) => {
+    if (!item.minRole) return true;
+    return hasRole(item.minRole);
+  });
+
   return (
     <nav className="hidden md:flex items-center gap-1">
-      {navItems.map((item) => (
+      {visibleItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
