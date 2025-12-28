@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const BATCH_SIZE = 10;
 
 interface KnowledgeItem {
@@ -29,6 +29,12 @@ interface ProcessedContent {
   service_lines: string[];
 }
 
+// Valid content_type values from DB constraint
+const VALID_CONTENT_TYPES = [
+  'Research Report', 'Industry Analysis', 'Thought Piece', 'News', 
+  'Case Study', 'How-To / Guide', 'Tool/Product', 'Field Guide', 'Video'
+];
+
 const CONTENT_EXTRACTION_PROMPT = `You are an expert content analyst for DAIN Studios, a data & AI consultancy. Analyze the provided content and extract structured information.
 
 Return a JSON object with these fields:
@@ -37,7 +43,7 @@ Return a JSON object with these fields:
   "key_insights": ["Array of 3-5 key insights or takeaways from the content"],
   "dain_context": "How this content is relevant to DAIN Studios' work in data strategy, AI implementation, analytics, or digital transformation (1-2 sentences)",
   "quotables": ["Array of 2-3 notable quotes or statistics from the content that could be cited"],
-  "content_type": "One of: Article, Report, Video, Podcast, Research Paper, Case Study, Blog Post, News, Tool, Framework",
+  "content_type": "MUST be exactly one of: Research Report, Industry Analysis, Thought Piece, News, Case Study, How-To / Guide, Tool/Product, Field Guide, Video",
   "industries": ["Array of relevant industries mentioned or applicable, e.g., Healthcare, Finance, Retail, Manufacturing"],
   "technologies": ["Array of technologies mentioned, e.g., Machine Learning, GenAI, Data Analytics, Cloud"],
   "service_lines": ["Array of DAIN service lines this relates to: Data Strategy, AI Implementation, Analytics, Digital Transformation, Data Governance"]
@@ -88,25 +94,30 @@ ${contentToAnalyze?.substring(0, 15000) || 'No content available'}`;
 
     const parsed = JSON.parse(text);
     
+    // Validate content_type against allowed values
+    const contentType = VALID_CONTENT_TYPES.includes(parsed.content_type) 
+      ? parsed.content_type 
+      : 'Thought Piece';
+
     return {
       summary: parsed.summary || `Analysis of: ${item.title}`,
       key_insights: Array.isArray(parsed.key_insights) ? parsed.key_insights.slice(0, 5) : [],
       dain_context: parsed.dain_context || 'Relevant to data and AI consulting.',
       quotables: Array.isArray(parsed.quotables) ? parsed.quotables.slice(0, 3) : [],
-      content_type: parsed.content_type || 'Article',
+      content_type: contentType,
       industries: Array.isArray(parsed.industries) ? parsed.industries : [],
       technologies: Array.isArray(parsed.technologies) ? parsed.technologies : [],
       service_lines: Array.isArray(parsed.service_lines) ? parsed.service_lines : [],
     };
   } catch (error) {
     console.error(`AI extraction failed for ${item.id}:`, error);
-    // Return minimal fallback
+    // Return minimal fallback with valid content_type
     return {
       summary: item.summary || `Content from: ${item.title}`,
       key_insights: [],
       dain_context: 'Pending detailed analysis.',
       quotables: [],
-      content_type: 'Article',
+      content_type: 'Thought Piece',  // Valid fallback
       industries: [],
       technologies: [],
       service_lines: [],
