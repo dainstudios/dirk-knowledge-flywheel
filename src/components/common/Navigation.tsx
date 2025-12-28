@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, PlusCircle, Layers, BookOpen, Users } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
 import { useRoles, type AppRole } from '@/hooks/useRoles';
 
 interface NavItem {
@@ -15,7 +15,6 @@ const navItems: NavItem[] = [
   { to: '/capture', label: 'Capture', icon: PlusCircle, minRole: 'contributor' },
   { to: '/pool', label: 'Pool', icon: Layers, minRole: 'contributor' },
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
-  { to: '/admin/users', label: 'Users', icon: Users, minRole: 'admin' },
 ];
 
 export function Navigation() {
