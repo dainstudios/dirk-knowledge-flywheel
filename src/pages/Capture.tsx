@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Link as LinkIcon, Check, FileText, FolderOpen, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, Link as LinkIcon, Check, FileText, FolderOpen, Clock, ExternalLink, Video } from 'lucide-react';
 import { z } from 'zod';
 import { Header, MobileNav } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,10 +15,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 const GOOGLE_DRIVE_INBOX_URL = 'https://drive.google.com/drive/folders/1_smc1iuRP7yNygdE3B7EnUYGbe30JFCM';
+const YOUTUBE_WEBHOOK_URL = 'https://n8n.dainservices.com/webhook/youtube-capture';
 
 const urlSchema = z.string().trim().url({ message: 'Please enter a valid URL' });
 
 const MAX_NOTES_LENGTH = 500;
+
+// Helper function to detect YouTube URLs
+function isYouTubeUrl(url: string): boolean {
+  return /youtube\.com\/watch|youtu\.be\/|youtube\.com\/embed/.test(url);
+}
 
 export default function Capture() {
   const { user, loading } = useAuth();
@@ -30,6 +36,7 @@ export default function Capture() {
   const [fastTrack, setFastTrack] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [isYouTube, setIsYouTube] = useState(false);
 
   // Auto-focus URL input on mount
   useEffect(() => {
@@ -54,6 +61,7 @@ export default function Capture() {
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
+    setIsYouTube(isYouTubeUrl(value));
     if (urlError) {
       validateUrl(value);
     }
@@ -83,52 +91,104 @@ export default function Capture() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from('knowledge_items').insert({
-        url: url.trim(),
-        title: url.trim(),
-        user_notes: notes.trim() || null,
-        fast_track: fastTrack,
-        status: 'pending',
-        capture_source: 'web_ui',
-        user_id: user.id,
-      });
+      const trimmedUrl = url.trim();
+      const trimmedNotes = notes.trim() || null;
 
-      if (error) {
-        // Check for duplicate URL error
-        if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
-          toast({
-            title: "Already captured",
-            description: "You've already captured this article.",
-            variant: 'destructive',
-          });
-        } else {
-          throw error;
+      if (isYouTubeUrl(trimmedUrl)) {
+        // YouTube URL - send to n8n webhook
+        const response = await fetch(YOUTUBE_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: trimmedUrl,
+            source: 'web_ui',
+            notes: trimmedNotes,
+            fast_track: fastTrack,
+            user_id: user.id,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          // Check for duplicate
+          if (errorText.includes('duplicate') || errorText.includes('already')) {
+            toast({
+              title: "Already captured",
+              description: "You've already captured this video.",
+              variant: 'destructive',
+            });
+            return;
+          }
+          throw new Error(`Webhook error: ${response.status}`);
         }
-        return;
-      }
 
-      // Success
-      toast({
-        description: (
-          <span className="flex items-center gap-2">
-            <Check className="h-4 w-4 text-green-500" />
-            Added to pool for processing
-          </span>
-        ),
-        action: (
-          <Link 
-            to="/dashboard" 
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            Dashboard
-          </Link>
-        ),
-      });
+        // Success for YouTube
+        toast({
+          description: (
+            <span className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-primary" />
+              YouTube video queued for processing
+            </span>
+          ),
+          action: (
+            <Link 
+              to="/dashboard" 
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              Dashboard
+            </Link>
+          ),
+        });
+      } else {
+        // Regular URL - use existing Supabase flow
+        const { error } = await supabase.from('knowledge_items').insert({
+          url: trimmedUrl,
+          title: trimmedUrl,
+          user_notes: trimmedNotes,
+          fast_track: fastTrack,
+          status: 'pending',
+          capture_source: 'web_ui',
+          user_id: user.id,
+        });
+
+        if (error) {
+          // Check for duplicate URL error
+          if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
+            toast({
+              title: "Already captured",
+              description: "You've already captured this article.",
+              variant: 'destructive',
+            });
+          } else {
+            throw error;
+          }
+          return;
+        }
+
+        // Success for regular URL
+        toast({
+          description: (
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-green-500" />
+              Added to pool for processing
+            </span>
+          ),
+          action: (
+            <Link 
+              to="/dashboard" 
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              Dashboard
+            </Link>
+          ),
+        });
+      }
 
       // Clear form
       setUrl('');
       setNotes('');
       setFastTrack(false);
+      setIsYouTube(false);
       urlInputRef.current?.focus();
 
     } catch (error) {
@@ -193,7 +253,7 @@ export default function Capture() {
                       id="url"
                       type="url"
                       inputMode="url"
-                      placeholder="Paste article URL..."
+                      placeholder="Paste URL (articles or YouTube)..."
                       value={url}
                       onChange={(e) => handleUrlChange(e.target.value)}
                       onBlur={() => url && validateUrl(url)}
@@ -202,6 +262,12 @@ export default function Capture() {
                     />
                     {urlError && (
                       <p className="text-sm text-destructive">{urlError}</p>
+                    )}
+                    {isYouTube && !urlError && (
+                      <p className="text-sm text-primary flex items-center gap-1.5">
+                        <Video className="h-4 w-4" />
+                        YouTube video detected
+                      </p>
                     )}
                   </div>
 

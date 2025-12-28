@@ -183,6 +183,9 @@ export type Database = {
           url_normalized: string | null
           user_id: string
           user_notes: string | null
+          video_duration_seconds: number | null
+          video_speakers: string[] | null
+          video_thumbnail_url: string | null
         }
         Insert: {
           actionability?: string | null
@@ -236,6 +239,9 @@ export type Database = {
           url_normalized?: string | null
           user_id: string
           user_notes?: string | null
+          video_duration_seconds?: number | null
+          video_speakers?: string[] | null
+          video_thumbnail_url?: string | null
         }
         Update: {
           actionability?: string | null
@@ -289,6 +295,9 @@ export type Database = {
           url_normalized?: string | null
           user_id?: string
           user_notes?: string | null
+          video_duration_seconds?: number | null
+          video_speakers?: string[] | null
+          video_thumbnail_url?: string | null
         }
         Relationships: []
       }
@@ -350,6 +359,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      extract_youtube_id: { Args: { url: string }; Returns: string }
       get_knowledge_stats: {
         Args: never
         Returns: {
