@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Link as LinkIcon, Check, FileText, FolderOpen, Clock, ExternalLink, Video } from 'lucide-react';
+import { ArrowLeft, Loader2, Link as LinkIcon, FileText, FolderOpen, Clock, ExternalLink, Video } from 'lucide-react';
 import { z } from 'zod';
 import { Header, MobileNav } from '@/components/common';
 import { Card, CardContent } from '@/components/ui/card';
@@ -124,20 +124,7 @@ export default function Capture() {
 
         // Success for YouTube
         toast({
-          description: (
-            <span className="flex items-center gap-2">
-              <Video className="h-4 w-4 text-primary" />
-              YouTube video queued for processing
-            </span>
-          ),
-          action: (
-            <Link 
-              to="/dashboard" 
-              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              Dashboard
-            </Link>
-          ),
+          description: "🎬 YouTube video queued for processing",
         });
       } else {
         // Regular URL - use existing Supabase flow
@@ -167,20 +154,7 @@ export default function Capture() {
 
         // Success for regular URL
         toast({
-          description: (
-            <span className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-green-500" />
-              Added to pool for processing
-            </span>
-          ),
-          action: (
-            <Link 
-              to="/dashboard" 
-              className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              Dashboard
-            </Link>
-          ),
+          description: "✓ Added to pool for processing",
         });
       }
 
