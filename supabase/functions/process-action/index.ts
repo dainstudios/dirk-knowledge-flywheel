@@ -353,7 +353,47 @@ function sanitizeFinding(finding: string): string {
 }
 
 // =============================================================================
-// AI CONTENT EXTRACTION
+// BUILD CONTENT FROM EXISTING DATABASE FIELDS (NO AI CALL)
+// =============================================================================
+
+function buildContentFromExisting(item: any): FormattedContent {
+  console.log("Building content from existing database fields (no AI call)...");
+  
+  // Build context from author + methodology
+  const author = item.author || item.author_organization || 'Research team';
+  const methodology = item.methodology || '';
+  const context = methodology 
+    ? `${author} ${methodology}`
+    : `${author} presents key findings on ${item.title || 'this topic'}`;
+  
+  // Use key_insights directly - format them with **Label:** structure
+  const rawInsights = item.key_insights || [];
+  const key_findings = rawInsights.map((insight: string) => {
+    if (!insight) return '**Insight:** Key finding from this content';
+    // If already has bold formatting, keep it
+    if (insight.includes('**')) return insight;
+    // Try to detect a natural label (first phrase before colon)
+    const colonIndex = insight.indexOf(':');
+    if (colonIndex > 0 && colonIndex < 50) {
+      const label = insight.substring(0, colonIndex).trim();
+      const rest = insight.substring(colonIndex + 1).trim();
+      return `**${label}:** ${rest}`;
+    }
+    // Otherwise add a generic label
+    return `**Key Insight:** ${insight}`;
+  });
+  
+  // Use dain_context directly
+  const dain_relevance = item.dain_context || 
+    'Useful for client conversations and thought leadership on AI strategy.';
+  
+  console.log(`Built content: ${key_findings.length} insights from existing data`);
+  
+  return { context, key_findings, dain_relevance };
+}
+
+// =============================================================================
+// AI CONTENT EXTRACTION (FALLBACK ONLY)
 // =============================================================================
 
 async function extractContentWithAI(item: any, googleApiKey: string): Promise<FormattedContent> {
@@ -612,13 +652,22 @@ serve(async (req) => {
       console.log(`includeInfographic: ${includeInfographic}`);
       
       try {
-        // Step 1: Extract content with AI (skip for infographic-only if we have the URL)
+        // Step 1: Build content - use existing data if available, AI as fallback
         let content: FormattedContent;
+        
+        // Check if we have good existing data (key_insights with at least 3 items)
+        const hasGoodExistingData = item.key_insights && 
+                                    Array.isArray(item.key_insights) && 
+                                    item.key_insights.length >= 3;
+        
         if (isInfographicOnly && item.infographic_url) {
-          console.log(`Using fallback content (infographic-only mode)`);
+          console.log(`Using minimal content (infographic-only mode)`);
           content = createFallbackContent(item);
+        } else if (hasGoodExistingData) {
+          console.log(`Using existing Pool data (${item.key_insights.length} insights available)`);
+          content = buildContentFromExisting(item);
         } else {
-          console.log(`Extracting content with AI...`);
+          console.log(`Falling back to AI extraction (key_insights: ${item.key_insights?.length || 0})`);
           content = await extractContentWithAI(item, googleApiKey);
         }
         
