@@ -22,7 +22,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // =============================================================================
 
 const SLACK_WEBHOOK_URL = Deno.env.get('SLACK_WEBHOOK_URL')!;
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3-flash-preview";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
