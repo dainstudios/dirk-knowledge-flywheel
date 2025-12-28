@@ -27,9 +27,38 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // =========================================================================
+    // AUTH VERIFICATION - Verify user owns this item before generating
+    // =========================================================================
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("No Authorization header provided");
+      return new Response(
+        JSON.stringify({ success: false, error: "Authorization required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    // Create RLS-enforced client using user's JWT
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error("Auth verification failed:", authError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid or expired token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
 
     const body: GenerateInfographicRequest = await req.json();
     const { item_id, type } = body;
@@ -42,25 +71,30 @@ serve(async (req) => {
     }
 
     console.log(`\n${"=".repeat(60)}`);
-    console.log(`GENERATE-INFOGRAPHIC - ${type.toUpperCase()}`);
+    console.log(`GENERATE-INFOGRAPHIC - ${type.toUpperCase()} - WITH AUTH`);
+    console.log(`User: ${user.id}`);
     console.log(`Item: ${item_id}`);
     console.log(`${"=".repeat(60)}\n`);
 
-    // Fetch the knowledge item
-    const { data: item, error: fetchError } = await supabase
+    // Verify ownership - RLS will block if user doesn't own this item
+    const { data: item, error: fetchError } = await supabaseAuth
       .from("knowledge_items")
       .select("*")
       .eq("id", item_id)
       .single();
 
     if (fetchError || !item) {
+      console.error(`Item not found or not owned by user: ${fetchError?.message}`);
       return new Response(
-        JSON.stringify({ success: false, error: `Item not found: ${fetchError?.message}` }),
+        JSON.stringify({ success: false, error: "Item not found or access denied" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
       );
     }
 
-    console.log(`Found item: ${item.title}`);
+    console.log(`Verified ownership - Found item: ${item.title}`);
+
+    // Create admin client for privileged operations (after ownership verified)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if infographic already exists
     if (item.infographic_url) {
