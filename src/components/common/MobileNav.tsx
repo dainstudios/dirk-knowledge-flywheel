@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, Layers, BookOpen, Users } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useRoles, type AppRole } from '@/hooks/useRoles';
@@ -15,7 +15,6 @@ const navItems: NavItem[] = [
   { to: '/capture', icon: PlusCircle, label: 'Capture', minRole: 'contributor' },
   { to: '/pool', icon: Layers, label: 'Pool', minRole: 'contributor' },
   { to: '/knowledge', icon: BookOpen, label: 'Knowledge' },
-  { to: '/admin/users', icon: Users, label: 'Users', minRole: 'admin' },
 ];
 
 export function MobileNav() {

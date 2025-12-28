@@ -11,25 +11,25 @@ import { Users, Shield, Pencil, Eye, Upload } from 'lucide-react';
 const ROLE_CONFIG: Record<AppRole, { label: string; color: string; icon: typeof Shield; description: string }> = {
   admin: {
     label: 'Admin',
-    color: 'bg-destructive/10 text-destructive border-destructive/20',
+    color: 'bg-[#1a2744] text-white border-[#1a2744]',
     icon: Shield,
     description: 'Full access, can manage users',
   },
   creator: {
     label: 'Creator',
-    color: 'bg-primary/10 text-primary border-primary/20',
+    color: 'bg-[#FFA92E]/15 text-[#d98c1b] border-[#FFA92E]/30',
     icon: Pencil,
     description: 'Can create content for LinkedIn, Newsletter',
   },
   contributor: {
     label: 'Contributor',
-    color: 'bg-success/10 text-success border-success/20',
+    color: 'bg-[#00B4B4]/15 text-[#008a8a] border-[#00B4B4]/30',
     icon: Upload,
     description: 'Can capture content and manage pool',
   },
   viewer: {
     label: 'Viewer',
-    color: 'bg-muted text-muted-foreground border-border',
+    color: 'bg-slate-100 text-slate-600 border-slate-200',
     icon: Eye,
     description: 'Read-only access to knowledge base',
   },
