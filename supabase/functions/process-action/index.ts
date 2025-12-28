@@ -599,24 +599,35 @@ serve(async (req) => {
 
     // TEAM - Post to Slack with deterministic template
     if (actions.team) {
-      console.log(`Action: TEAM (Slack with ${post_option || 'summary_only'})`);
-      console.log(`Infographic URL: ${item.infographic_url || 'none'}`);
+      console.log(`\n>>> TEAM ACTION DEBUG (v3.3) <<<`);
+      console.log(`post_option received: "${post_option}" (type: ${typeof post_option})`);
+      console.log(`item.infographic_url: ${item.infographic_url || 'NULL'}`);
+      
+      const isInfographicOnly = post_option === 'infographic_quick' || post_option === 'infographic_premium';
+      const includeSummary = !isInfographicOnly;
+      const includeInfographic = post_option !== 'summary_only' && !!item.infographic_url;
+      
+      console.log(`isInfographicOnly: ${isInfographicOnly}`);
+      console.log(`includeSummary: ${includeSummary}`);
+      console.log(`includeInfographic: ${includeInfographic}`);
       
       try {
-        // For infographic-only posts, we still need minimal content for fallback
-        const isInfographicOnly = post_option === 'infographic_quick' || post_option === 'infographic_premium';
-        
         // Step 1: Extract content with AI (skip for infographic-only if we have the URL)
         let content: FormattedContent;
         if (isInfographicOnly && item.infographic_url) {
-          // Use minimal fallback content for infographic-only posts
+          console.log(`Using fallback content (infographic-only mode)`);
           content = createFallbackContent(item);
         } else {
+          console.log(`Extracting content with AI...`);
           content = await extractContentWithAI(item, googleApiKey);
         }
         
         // Step 2: Render with deterministic template (includes infographic if available)
         const message = renderSlackMessage(item, content, post_option);
+        
+        // Log block types being sent
+        const blockTypes = message.blocks.map((b: any) => b.type);
+        console.log(`Slack message blocks: ${JSON.stringify(blockTypes)}`);
         
         // Step 3: Validate compliance (log violations but don't block)
         const messageText = message.blocks
@@ -632,8 +643,10 @@ serve(async (req) => {
         }
         
         // Step 4: Post to Slack
+        console.log(`Posting to Slack...`);
         await postToSlack(message);
         
+        console.log(`>>> TEAM ACTION COMPLETE <<<\n`);
         results.push({ action: "team", success: true });
         queues.push("team");
         updateData.shared_to_team = true;
