@@ -10,7 +10,14 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-const emailSchema = z.string().email('Please enter a valid email address');
+const ALLOWED_DOMAIN = '@dainstudios.com';
+
+const emailSchema = z.string()
+  .email('Please enter a valid email address')
+  .refine(
+    (email) => email.toLowerCase().endsWith(ALLOWED_DOMAIN),
+    { message: `Only ${ALLOWED_DOMAIN} email addresses are allowed` }
+  );
 
 export default function Login() {
   const { user, loading, signInWithMagicLink } = useAuth();

@@ -1,19 +1,39 @@
-import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useRoles, type AppRole } from '@/hooks/useRoles';
 
-const navItems = [
+interface NavItem {
+  to: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+  minRole?: AppRole;
+}
+
+const navItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/capture', icon: PlusCircle, label: 'Capture' },
-  { to: '/pool', icon: Layers, label: 'Pool' },
+  { to: '/capture', icon: PlusCircle, label: 'Capture', minRole: 'contributor' },
+  { to: '/pool', icon: Layers, label: 'Pool', minRole: 'contributor' },
   { to: '/knowledge', icon: BookOpen, label: 'Knowledge' },
+  { to: '/admin/users', icon: Users, label: 'Users', minRole: 'admin' },
 ];
 
 export function MobileNav() {
+  const { hasRole, roleLoading } = useRoles();
+
+  if (roleLoading) {
+    return <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden h-16" />;
+  }
+
+  const visibleItems = navItems.filter((item) => {
+    if (!item.minRole) return true;
+    return hasRole(item.minRole);
+  });
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden">
       <div className="flex items-center justify-around h-16">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {visibleItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
