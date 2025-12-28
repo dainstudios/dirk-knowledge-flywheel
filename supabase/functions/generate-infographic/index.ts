@@ -16,7 +16,7 @@ const corsHeaders = {
 
 interface GenerateInfographicRequest {
   item_id: string;
-  type: "quick" | "premium";
+  type: "quick" | "detailed";
   model?: string;
 }
 
@@ -111,37 +111,73 @@ serve(async (req) => {
     }
 
     // Build the prompt for infographic generation
-    const keyFindings = item.key_findings?.slice(0, 5).join("\n• ") || item.summary?.substring(0, 500) || "Key insights from this content";
+    // QUICK: Use top 5 key insights only
+    // DETAILED: Use full document content
+    const topFindings = (item.key_insights || item.key_findings || []).slice(0, 5);
+    const keyFindingsText = topFindings.length > 0 
+      ? topFindings.map((f: string, i: number) => `${i + 1}. ${f}`).join("\n")
+      : item.summary?.substring(0, 500) || "Key insights from this content";
     
-    const prompt = type === "premium"
-      ? `Create a professional consulting-style infographic visual for this research:
+    // For detailed, get full content
+    const fullContent = item.content || item.pdf_data || item.summary || "";
+    const truncatedContent = fullContent.substring(0, 20000);
+    
+    const prompt = type === "detailed"
+      ? `Create an extensive, professional consulting-style infographic.
+CRITICAL: Image MUST be LANDSCAPE orientation (1792x1024 pixels, 16:9 aspect ratio).
 
-Title: ${item.title}
-Author: ${item.author || item.author_organization || "Unknown"}
+TITLE: "${item.title}"
+AUTHOR: ${item.author || item.author_organization || "Research team"}
+${item.methodology ? `METHODOLOGY: ${item.methodology}` : ""}
 
-Key Findings:
-• ${keyFindings}
+FULL DOCUMENT CONTENT FOR ANALYSIS:
+${truncatedContent}
 
-DAIN Context: ${item.dain_context || "Relevant for AI strategy consulting"}
+DAIN STUDIOS RELEVANCE:
+${item.dain_context || "Data & AI strategy consulting"}
 
-Design Requirements:
-- Clean, modern consulting aesthetic (McKinsey/BCG style)
-- Use dark blue (#1a365d), orange (#FFA92E), and white color scheme
-- Include data visualizations, icons, and clear hierarchy
-- Professional typography with clear headings
-- 16:9 aspect ratio, suitable for Slack/presentations
-- Include the title prominently at the top
-- Show 3-5 key data points or findings with visual elements
-- Bottom section with "DAIN Studios" branding
+LAYOUT REQUIREMENTS:
+- LANDSCAPE orientation only (wider than tall, 16:9 ratio)
+- Header: Dark navy blue (#1a365d) with white title and author text
+- Main content: Two-column layout with maximum space utilization
+  - Left: "KEY FINDINGS" section with orange (#FFA92E) heading
+    - 5-7 key insights with professional vector icons
+    - Data visualizations where applicable
+  - Right: "DAIN CONTEXT" section with orange heading
+    - How this relates to data strategy & AI consulting
+    - Relevant service lines and applications
+- Footer: Navy blue bar with:
+  - Bottom right corner: Small "powered by" text with "DAIN Studios" in slightly larger font and a minimalist circular "D" icon (do NOT generate a full logo image, just render clean text and simple icon)
 
-Ultra high resolution, professional quality.`
-      : `Create a simple infographic visual summarizing:
+STYLE REQUIREMENTS:
+- Institutional and authoritative (McKinsey/Deloitte quarterly report style)
+- Color scheme: Navy (#1a365d), Orange (#FFA92E), White, Light gray
+- Professional sans-serif typography with clear hierarchy
+- High-fidelity, crisp, legible text rendering
+- Clean vector illustrations and icons
+- Grid layout with balanced white space
+- Ultra high resolution quality`
+      : `Create a professional, minimalist infographic.
+CRITICAL: Image MUST be LANDSCAPE orientation (1792x1024 pixels, 16:9 aspect ratio).
 
-Title: ${item.title}
-Key Points:
-• ${keyFindings}
+Title: "${item.title}"
+${item.author ? `Author: ${item.author}` : ""}
 
-Design: Clean, modern style with blue (#1a365d) and orange (#FFA92E) accents. Include title, 3-5 bullet points with icons, 16:9 aspect ratio. Professional consulting style. Include "DAIN Studios" at bottom.`;
+KEY FINDINGS:
+${keyFindingsText}
+
+DAIN CONTEXT:
+${item.dain_context || "Relevant for AI strategy consulting"}
+
+LAYOUT REQUIREMENTS:
+- Landscape orientation only (wider than tall)
+- Top section: Dark blue (#1a365d) header bar with white title text
+- Main content: Two columns layout
+  - Left column: "KEY FINDINGS" with orange (#FFA92E) heading, 3-5 bullet points with professional icons
+  - Right column: "DAIN CONTEXT" with orange heading, showing relevance to consulting
+- Footer: Navy blue bar with bottom right corner showing small "powered by" text with "DAIN Studios" (do NOT generate a logo image, just render the text in small italic font with a simple circular "D" icon)
+
+STYLE: Clean corporate aesthetic, McKinsey/Deloitte consulting style. High-fidelity text rendering. Crisp typography. Minimalist. Professional icons. White background for main content. Ultra high resolution.`;
 
     console.log("Calling Lovable AI Gateway for image generation...");
     console.log(`Prompt length: ${prompt.length} chars`);

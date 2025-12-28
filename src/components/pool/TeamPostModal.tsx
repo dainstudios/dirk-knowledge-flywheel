@@ -24,7 +24,7 @@ interface TeamPostModalProps {
 }
 
 const QUICK_MESSAGES = ['Preparing content...', 'Generating visual...'];
-const PREMIUM_MESSAGES = [
+const DETAILED_MESSAGES = [
   'Fetching document...',
   'Analyzing content...',
   'Extracting themes...',
@@ -59,8 +59,8 @@ export function TeamPostModal({
   useEffect(() => {
     if (!isGenerating) return;
 
-    const isPremium = selectedOption.includes('premium');
-    const messages = isPremium ? PREMIUM_MESSAGES : QUICK_MESSAGES;
+    const isDetailed = selectedOption.includes('detailed');
+    const messages = isDetailed ? DETAILED_MESSAGES : QUICK_MESSAGES;
     setStatusMessage(messages[0]);
     setStatusIndex(0);
 
@@ -82,7 +82,7 @@ export function TeamPostModal({
     // If we need an infographic and don't have one, generate it first
     if (needsInfographic && !hasExistingInfographic) {
       setIsGenerating(true);
-      const type = selectedOption.includes('premium') ? 'premium' : 'quick';
+      const type = selectedOption.includes('detailed') ? 'detailed' : 'quick';
 
       try {
         const response = await fetch(
@@ -134,8 +134,8 @@ export function TeamPostModal({
       description: hasExistingInfographic ? 'Uses existing' : '~15 sec',
     },
     {
-      value: 'summary_premium' as PostOption,
-      label: 'Summary + Premium infographic',
+      value: 'summary_detailed' as PostOption,
+      label: 'Summary + Detailed infographic',
       description: hasExistingInfographic ? 'Uses existing' : '~60 sec',
     },
     {
@@ -144,8 +144,8 @@ export function TeamPostModal({
       description: hasExistingInfographic ? 'Uses existing' : '~15 sec',
     },
     {
-      value: 'infographic_premium' as PostOption,
-      label: 'Infographic only (Premium)',
+      value: 'infographic_detailed' as PostOption,
+      label: 'Infographic only (Detailed)',
       description: hasExistingInfographic ? 'Uses existing' : '~60 sec',
     },
   ];
