@@ -140,6 +140,7 @@ export type Database = {
           content: string | null
           content_type: string | null
           context: string | null
+          context_string: string | null
           created_at: string
           curated_at: string | null
           dain_context: string | null
@@ -196,6 +197,7 @@ export type Database = {
           content?: string | null
           content_type?: string | null
           context?: string | null
+          context_string?: string | null
           created_at?: string
           curated_at?: string | null
           dain_context?: string | null
@@ -252,6 +254,7 @@ export type Database = {
           content?: string | null
           content_type?: string | null
           context?: string | null
+          context_string?: string | null
           created_at?: string
           curated_at?: string | null
           dain_context?: string | null
