@@ -1,26 +1,27 @@
 import { Link } from 'react-router-dom';
-import { Layers, Clock, Database, PlusCircle } from 'lucide-react';
+import { Layers, Clock, Database, PlusCircle, ArrowRight } from 'lucide-react';
 import { Header, MobileNav } from '@/components/common';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FeatureIcon } from '@/components/ui/feature-icon';
 import { useAuth } from '@/hooks/useAuth';
 import { useKnowledgeStats } from '@/hooks/useKnowledge';
 
 function StatsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-3">
       {[1, 2, 3].map((i) => (
-        <Card key={i}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-4 rounded" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-16 mb-1" />
-            <Skeleton className="h-3 w-24" />
-          </CardContent>
+        <Card key={i} className="p-6">
+          <div className="flex items-start gap-4">
+            <Skeleton className="h-12 w-12 rounded-xl" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </div>
         </Card>
       ))}
     </div>
@@ -35,13 +36,13 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
       
-      <main className="container py-6 md:py-8">
+      <main className="container py-8 md:py-12">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-            Welcome back
+        <div className="mb-10 md:mb-14">
+          <h1 className="heading-section text-foreground mb-2">
+            Welcome Back
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground text-lg">
             {user?.email}
           </p>
         </div>
@@ -50,78 +51,94 @@ export default function Dashboard() {
         {isLoading ? (
           <StatsSkeleton />
         ) : (
-          <div className="grid gap-4 md:grid-cols-3 mb-8">
-            <Link to="/pool">
-              <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pool</CardTitle>
-                  <Layers className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">{stats?.pool_count ?? 0}</span>
-                    {(stats?.pool_count ?? 0) > 0 && (
-                      <Badge className="bg-primary text-primary-foreground">
-                        {stats?.pool_count} to review
-                      </Badge>
-                    )}
+          <div className="grid gap-6 md:grid-cols-3 mb-10 md:mb-14">
+            <Link to="/pool" className="group">
+              <Card className="h-full transition-all hover:border-primary/50 hover:shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <FeatureIcon icon={Layers} size="lg" />
+                    <div className="flex-1">
+                      <CardTitle className="heading-card text-muted-foreground group-hover:text-primary transition-colors">
+                        Pool
+                      </CardTitle>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-3xl font-bold text-foreground">{stats?.pool_count ?? 0}</span>
+                        {(stats?.pool_count ?? 0) > 0 && (
+                          <Badge className="bg-primary text-primary-foreground">
+                            to review
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Items awaiting review
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Items awaiting review
-                  </p>
                 </CardContent>
               </Card>
             </Link>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">{stats?.pending_count ?? 0}</span>
-                  {(stats?.pending_count ?? 0) > 0 && (
-                    <Badge variant="secondary">
-                      {stats?.pending_count} processing
-                    </Badge>
-                  )}
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <FeatureIcon icon={Clock} size="lg" />
+                  <div className="flex-1">
+                    <CardTitle className="heading-card text-muted-foreground">
+                      Pending
+                    </CardTitle>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-3xl font-bold text-foreground">{stats?.pending_count ?? 0}</span>
+                      {(stats?.pending_count ?? 0) > 0 && (
+                        <Badge variant="secondary">
+                          processing
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Items being processed
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Items being processed
-                </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Knowledge Base</CardTitle>
-                <Database className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.knowledge_count ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total items stored
-                </p>
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <FeatureIcon icon={Database} size="lg" />
+                  <div className="flex-1">
+                    <CardTitle className="heading-card text-muted-foreground">
+                      Knowledge Base
+                    </CardTitle>
+                    <div className="mt-2">
+                      <span className="text-3xl font-bold text-foreground">{stats?.knowledge_count ?? 0}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Total items stored
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
         )}
 
         {/* Quick Actions */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight">Quick Actions</h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button asChild size="lg" className="flex-1 sm:flex-none">
-              <Link to="/capture">
+        <div className="space-y-4">
+          <h2 className="heading-card text-foreground">Quick Actions</h2>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button asChild variant="pill" size="lg">
+              <Link to="/capture" className="flex items-center">
                 <PlusCircle className="h-5 w-5 mr-2" />
                 Capture Content
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="flex-1 sm:flex-none">
-              <Link to="/pool">
+            <Button asChild variant="accent" size="lg">
+              <Link to="/pool" className="flex items-center">
                 <Layers className="h-5 w-5 mr-2" />
                 Review Pool
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
           </div>
