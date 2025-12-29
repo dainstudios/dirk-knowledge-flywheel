@@ -74,29 +74,53 @@ Be thorough and specific. Extract real quotes and statistics when available. Foc
 // ============= CONTENT FETCHING FUNCTIONS =============
 
 /**
- * Fetch content from a regular URL using Jina Reader
+ * Fetch content from a regular URL using Gemini
  */
-async function fetchUrlContent(url: string): Promise<string | null> {
-  console.log(`Fetching URL content via Jina Reader: ${url}`);
+async function fetchUrlContent(url: string, googleApiKey: string): Promise<string | null> {
+  console.log(`Fetching URL content via Gemini: ${url}`);
   
   try {
-    const jinaUrl = `https://r.jina.ai/${url}`;
-    const response = await fetch(jinaUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/plain',
-      },
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a web content extractor. Visit this URL and extract ALL text content from the page.
+
+URL: ${url}
+
+Extract and return:
+- The article title and all headings
+- The full body text (paragraphs, lists, etc.)
+- Key statistics, data points, and numbers mentioned
+- Author information and publication date if present
+- Any quotes or cited sources
+
+Return the extracted content as plain text, preserving the logical structure with headings. Do not summarize - extract the FULL text content.`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8000,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
-      console.error(`Jina Reader error for ${url}: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Gemini URL fetch error for ${url}: ${response.status} - ${errorText}`);
       return null;
     }
 
-    const content = await response.text();
+    const data = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!content || content.length < 100) {
-      console.warn(`Jina Reader returned minimal content for ${url}`);
+      console.warn(`Gemini returned minimal content for ${url}`);
       return null;
     }
 
@@ -112,11 +136,6 @@ async function fetchUrlContent(url: string): Promise<string | null> {
  * Extract file ID from Google Drive URL
  */
 function extractGoogleDriveFileId(driveUrl: string): string | null {
-  // Patterns for Google Drive URLs:
-  // https://drive.google.com/file/d/FILE_ID/view
-  // https://drive.google.com/open?id=FILE_ID
-  // https://docs.google.com/document/d/FILE_ID/edit
-  
   const patterns = [
     /\/file\/d\/([a-zA-Z0-9_-]+)/,
     /\/document\/d\/([a-zA-Z0-9_-]+)/,
@@ -136,14 +155,14 @@ function extractGoogleDriveFileId(driveUrl: string): string | null {
 }
 
 /**
- * Fetch PDF content from Google Drive and extract text using Gemini Vision
+ * Fetch PDF/document content from Google Drive using Gemini
  */
 async function fetchGoogleDrivePdfContent(
   driveUrl: string,
   fileId: string | null,
   googleApiKey: string
 ): Promise<string | null> {
-  console.log(`Fetching Google Drive PDF content: ${driveUrl}`);
+  console.log(`Fetching Google Drive content via Gemini: ${driveUrl}`);
   
   const extractedFileId = fileId || extractGoogleDriveFileId(driveUrl);
   
@@ -153,52 +172,92 @@ async function fetchGoogleDrivePdfContent(
   }
 
   try {
-    // Try Jina Reader first - it supports Google Drive URLs
-    const jinaUrl = `https://r.jina.ai/${driveUrl}`;
-    const jinaResponse = await fetch(jinaUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/plain',
-      },
-    });
-
-    if (jinaResponse.ok) {
-      const content = await jinaResponse.text();
-      if (content && content.length > 200) {
-        console.log(`Jina Reader successfully extracted ${content.length} chars from Google Drive`);
-        return content;
-      }
-    }
-
-    // Fallback: Use direct Google Drive export URL with Gemini vision
-    console.log(`Jina failed, trying Gemini vision for PDF analysis...`);
-    
-    // Get direct download URL for PDF
+    // Get direct download URL for the file
     const directUrl = `https://drive.google.com/uc?export=download&id=${extractedFileId}`;
     
-    // Use Gemini to analyze the PDF via URL
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [
-              {
-                text: `Please extract and summarize all the text content from this PDF document. Provide the full text extraction including:
-- Main headings and sections
-- Key statistics and data points
-- Important quotes and findings
-- Author information if present
-- Any methodology mentioned
+            parts: [{
+              text: `You are a document content extractor. Extract ALL text content from this PDF/document.
 
 Document URL: ${directUrl}
 Google Drive URL: ${driveUrl}
 
-Extract as much text content as possible for analysis.`
-              }
-            ]
+Extract and return:
+- Document title and all section headings
+- Full body text from all pages/sections
+- All statistics, data points, charts descriptions, and tables (as text)
+- Author information, publication date, and source attribution
+- Methodology and research approach if mentioned
+- Key quotes and findings
+
+Return the extracted content as plain text, preserving logical structure. Extract the COMPLETE text - do not summarize.`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8000,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Gemini Drive extraction failed: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (extractedText && extractedText.length > 100) {
+      console.log(`Gemini extracted ${extractedText.length} chars from Google Drive`);
+      return extractedText;
+    }
+
+    console.warn(`Could not extract meaningful content from Google Drive`);
+    return null;
+  } catch (error) {
+    console.error(`Failed to fetch Google Drive content: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Fetch YouTube video transcript/content using Gemini
+ */
+async function fetchYouTubeContent(url: string, googleApiKey: string): Promise<string | null> {
+  console.log(`Fetching YouTube content via Gemini: ${url}`);
+  
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a video content analyzer. Analyze this YouTube video and extract comprehensive information.
+
+YouTube URL: ${url}
+
+Extract and return:
+- Video title and description
+- Complete transcript or detailed summary of spoken content
+- Key topics discussed and main arguments
+- Notable quotes from speakers
+- Statistics or data points mentioned
+- Speaker names and their roles/expertise if mentioned
+
+Provide as much detail as possible about the video's content.`
+            }]
           }],
           generationConfig: {
             temperature: 0.2,
@@ -208,24 +267,24 @@ Extract as much text content as possible for analysis.`
       }
     );
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error(`Gemini PDF extraction failed: ${geminiResponse.status} - ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Gemini YouTube analysis failed: ${response.status} - ${errorText}`);
       return null;
     }
 
-    const geminiData = await geminiResponse.json();
-    const extractedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const data = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
-    if (extractedText && extractedText.length > 100) {
-      console.log(`Gemini extracted ${extractedText.length} chars from PDF`);
-      return extractedText;
+    if (content && content.length > 100) {
+      console.log(`Gemini extracted ${content.length} chars from YouTube`);
+      return content;
     }
 
-    console.warn(`Could not extract meaningful content from Google Drive PDF`);
+    console.warn(`Could not extract meaningful content from YouTube`);
     return null;
   } catch (error) {
-    console.error(`Failed to fetch Google Drive PDF content: ${error}`);
+    console.error(`Failed to fetch YouTube content: ${error}`);
     return null;
   }
 }
@@ -237,19 +296,24 @@ async function ensureContentAvailable(
   item: KnowledgeItem,
   googleApiKey: string
 ): Promise<{ content: string | null; contentSource: string }> {
-  // Skip YouTube videos - they're handled separately
-  if (item.content_type === 'Video' || item.url?.includes('youtube.com') || item.url?.includes('youtu.be')) {
-    console.log(`Skipping content fetch for video: ${item.id}`);
-    return { content: item.content, contentSource: 'video' };
-  }
-
   // If content already exists and is substantial, use it
   if (item.content && item.content.length > 500) {
     console.log(`Using existing content (${item.content.length} chars) for: ${item.id}`);
     return { content: item.content, contentSource: 'existing' };
   }
 
-  // Try Google Drive URL first (for PDFs)
+  // Check if it's a YouTube video
+  const isYouTube = item.url?.includes('youtube.com') || item.url?.includes('youtu.be');
+  if (isYouTube && item.url) {
+    console.log(`Attempting YouTube content fetch for: ${item.id}`);
+    const youtubeContent = await fetchYouTubeContent(item.url, googleApiKey);
+    
+    if (youtubeContent && youtubeContent.length > 200) {
+      return { content: youtubeContent, contentSource: 'youtube' };
+    }
+  }
+
+  // Try Google Drive URL (for PDFs/documents)
   if (item.google_drive_url) {
     console.log(`Attempting Google Drive content fetch for: ${item.id}`);
     const driveContent = await fetchGoogleDrivePdfContent(
@@ -263,10 +327,10 @@ async function ensureContentAvailable(
     }
   }
 
-  // Try regular URL via Jina Reader
-  if (item.url) {
+  // Try regular URL via Gemini
+  if (item.url && !isYouTube) {
     console.log(`Attempting URL content fetch for: ${item.id}`);
-    const urlContent = await fetchUrlContent(item.url);
+    const urlContent = await fetchUrlContent(item.url, googleApiKey);
     
     if (urlContent && urlContent.length > 200) {
       return { content: urlContent, contentSource: 'url' };
