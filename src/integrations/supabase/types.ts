@@ -313,6 +313,45 @@ export type Database = {
         }
         Relationships: []
       }
+      model_usage_log: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          edge_function: string
+          error_message: string | null
+          id: string
+          item_id: string | null
+          model_used: string
+          success: boolean | null
+          tokens_input: number | null
+          tokens_output: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          edge_function: string
+          error_message?: string | null
+          id?: string
+          item_id?: string | null
+          model_used: string
+          success?: boolean | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          edge_function?: string
+          error_message?: string | null
+          id?: string
+          item_id?: string | null
+          model_used?: string
+          success?: boolean | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -422,7 +461,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      model_usage_summary: {
+        Row: {
+          avg_duration_ms: number | null
+          call_count: number | null
+          edge_function: string | null
+          error_count: number | null
+          model_used: string | null
+          success_count: number | null
+          total_input_tokens: number | null
+          total_output_tokens: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       extract_youtube_id: { Args: { url: string }; Returns: string }
