@@ -9,6 +9,12 @@
    Muted: #6B7280
    Success: #10B981
    Error: #EF4444
+   
+   ORAA-Inspired Additions:
+   - Pill buttons with arrows
+   - Bold uppercase headings
+   - Soft shadows and rounded cards
+   - Feature icons with orange accent
 */
 
 @layer base {
@@ -45,6 +51,12 @@
     --ring: 36 100% 59%;
 
     --radius: 0.5rem;
+    --radius-2xl: 1rem;
+    --radius-pill: 9999px;
+
+    /* Soft design tokens */
+    --primary-soft: 36 100% 59%;
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 10%;
@@ -88,6 +100,9 @@
     --input: 0 0% 20%;
     --ring: 36 100% 59%;
 
+    --primary-soft: 36 100% 59%;
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.2);
+
     --sidebar-background: 0 0% 7%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 36 100% 59%;
@@ -106,5 +121,29 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* ORAA-Inspired Typography Utilities */
+@layer components {
+  .heading-display {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold uppercase tracking-tight;
+  }
+  
+  .heading-section {
+    @apply text-2xl md:text-3xl font-bold uppercase tracking-tight;
+  }
+  
+  .heading-card {
+    @apply text-lg font-semibold tracking-tight;
+  }
+
+  /* Soft background utilities */
+  .bg-primary-soft {
+    background-color: hsl(var(--primary) / 0.1);
+  }
+  
+  .bg-primary-soft-hover:hover {
+    background-color: hsl(var(--primary) / 0.15);
   }
 }
