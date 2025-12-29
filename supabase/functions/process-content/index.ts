@@ -6,7 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const GEMINI_MODEL = 'gemini-3-flash-preview';
+// Use gemini-2.5-flash for high-quality content analysis
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const BATCH_SIZE = 10;
 
 interface KnowledgeItem {

@@ -252,8 +252,9 @@ RULES:
 - Return ONLY the JSON object, no markdown or explanation`;
 
         // Use base64 approach directly (more reliable)
+        // Use gemini-2.5-flash for quality vision analysis
         const visionResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
