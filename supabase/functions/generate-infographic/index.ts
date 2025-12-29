@@ -179,7 +179,15 @@ LAYOUT REQUIREMENTS:
 
 STYLE: Clean corporate aesthetic, McKinsey/Deloitte consulting style. High-fidelity text rendering. Crisp typography. Minimalist. Professional icons. White background for main content. Ultra high resolution.`;
 
+    // Select model based on infographic type:
+    // Quick: Use gemini-2.5-flash-image-preview (fast, good enough for key insights)
+    // Detailed: Use gemini-3-pro-image-preview (best quality for comprehensive analysis)
+    const imageModel = type === "detailed" 
+      ? "google/gemini-3-pro-image-preview"  // Best quality for detailed infographics
+      : "google/gemini-2.5-flash-image-preview";  // Fast for quick previews
+
     console.log("Calling Lovable AI Gateway for image generation...");
+    console.log(`Model: ${imageModel}`);
     console.log(`Prompt length: ${prompt.length} chars`);
 
     // Call the Lovable AI Gateway
@@ -190,7 +198,7 @@ STYLE: Clean corporate aesthetic, McKinsey/Deloitte consulting style. High-fidel
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
+        model: imageModel,
         messages: [
           {
             role: "user",
