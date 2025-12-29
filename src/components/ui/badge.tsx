@@ -4,15 +4,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-pill border px-3 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground border-border",
-        soft: "border-transparent bg-primary-soft text-primary",
+        // Default is now muted grey
+        default: "border-transparent bg-grey-100 text-grey-500",
+        // Secondary is slightly darker grey
+        secondary: "border-transparent bg-grey-200 text-secondary-foreground",
+        // Primary/highlight - use ONLY for important emphasis
+        primary: "border-transparent bg-primary text-primary-foreground",
+        // Soft primary - subtle orange tint
+        soft: "border-transparent bg-primary/10 text-primary",
+        // Outlined - subtle border
+        outline: "border-grey-200 text-grey-500 bg-transparent",
+        // Destructive
+        destructive: "border-transparent bg-destructive text-destructive-foreground",
+        // Success
+        success: "border-transparent bg-success/10 text-success",
       },
     },
     defaultVariants: {
