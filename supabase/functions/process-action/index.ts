@@ -22,7 +22,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // =============================================================================
 
 const SLACK_WEBHOOK_URL = Deno.env.get('SLACK_WEBHOOK_URL')!;
-const GEMINI_MODEL = "gemini-3-flash-preview";
+// Use gemini-2.0-flash for simple Slack formatting (4M TPM, unlimited daily)
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
