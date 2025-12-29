@@ -52,7 +52,12 @@ Return a JSON object with these fields:
 Be concise and specific. Focus on business and technology insights relevant to a data & AI consultancy.`;
 
 async function extractContentWithAI(item: KnowledgeItem, googleApiKey: string): Promise<ProcessedContent> {
-  const contentToAnalyze = item.content || item.summary || item.title;
+  // Clean content: remove base64 data, very long URLs, and truncate
+  const rawContent = item.content || item.summary || item.title || '';
+  const cleanedContent = rawContent
+    .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[base64 data removed]')
+    .replace(/https?:\/\/[^\s]{200,}/g, '[long URL removed]')
+    .substring(0, 8000);
   
   const prompt = `Analyze this content:
 
@@ -60,7 +65,13 @@ Title: ${item.title}
 URL: ${item.url || 'N/A'}
 
 Content:
-${contentToAnalyze?.substring(0, 15000) || 'No content available'}`;
+${cleanedContent || 'No content available'}`;
+  
+  // Estimate token count and warn if still large
+  const estimatedTokens = prompt.length / 4;
+  if (estimatedTokens > 50000) {
+    console.warn(`Large content detected (~${Math.round(estimatedTokens)} tokens), may be truncated by API`);
+  }
 
   try {
     const response = await fetch(
