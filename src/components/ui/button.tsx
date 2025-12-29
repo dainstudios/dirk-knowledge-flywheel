@@ -10,21 +10,21 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-md",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md",
-        ghost: "hover:bg-accent hover:text-accent-foreground rounded-md",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl",
+        outline: "border border-grey-200 bg-background text-foreground hover:bg-grey-100 rounded-xl",
+        secondary: "bg-grey-100 text-secondary-foreground hover:bg-grey-200 rounded-xl",
+        ghost: "hover:bg-grey-100 text-foreground rounded-xl",
         link: "text-primary underline-offset-4 hover:underline",
-        // ORAA-inspired pill button with arrow
-        pill: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-pill px-6",
-        // Outlined accent style
-        accent: "border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground rounded-pill px-6",
+        // Pill button with arrow - primary action
+        pill: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6",
+        // Outlined pill - secondary action
+        accent: "border border-grey-200 bg-background text-foreground hover:bg-grey-100 rounded-full px-6",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-9 px-3 text-sm",
+        lg: "h-12 px-6 text-base",
         icon: "h-10 w-10",
       },
     },
@@ -45,7 +45,7 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, withArrow = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    const isPill = variant === "pill" || variant === "accent";
+    const isPill = variant === "pill";
     
     return (
       <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>

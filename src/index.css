@@ -2,19 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* DAIN Studios Design System
-   Primary: #FFA92E (orange)
+/* DAIN Studios Design System - Minimalist Refresh
+   
+   Primary (Orange): #FFA92E - Reserved for TOP highlights only
    Dark: #1A1A1A
    Light BG: #FAFAFA
-   Muted: #6B7280
-   Success: #10B981
-   Error: #EF4444
    
-   ORAA-Inspired Additions:
-   - Pill buttons with arrows
-   - Bold uppercase headings
-   - Soft shadows and rounded cards
-   - Feature icons with orange accent
+   Design Philosophy:
+   - Clean, muted greys as default
+   - Orange used sparingly for emphasis
+   - Generous whitespace, subtle shadows
+   - Simple geometric icons
 */
 
 @layer base {
@@ -28,35 +26,50 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    --primary: 36 100% 59%; /* #FFA92E - DAIN Orange */
+    --primary: 36 100% 59%; /* #FFA92E - DAIN Orange - use sparingly */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary-foreground: 0 0% 35%;
 
-    --muted: 220 9% 46%; /* #6B7280 */
-    --muted-foreground: 220 9% 46%;
+    --muted: 0 0% 45%;
+    --muted-foreground: 0 0% 45%;
 
     --accent: 36 100% 59%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%; /* #EF4444 */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 160 84% 39%; /* #10B981 */
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
     --ring: 36 100% 59%;
 
-    --radius: 0.5rem;
-    --radius-2xl: 1rem;
+    --radius: 0.75rem;
+    --radius-2xl: 1.25rem;
+    --radius-3xl: 1.5rem;
     --radius-pill: 9999px;
 
-    /* Soft design tokens */
-    --primary-soft: 36 100% 59%;
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04);
+    /* Muted accent colors for cards */
+    --accent-sage: 140 20% 94%;
+    --accent-stone: 30 10% 93%;
+    --accent-slate: 210 15% 94%;
+    
+    /* Grey palette */
+    --grey-50: 0 0% 98%;
+    --grey-100: 0 0% 96%;
+    --grey-200: 0 0% 90%;
+    --grey-300: 0 0% 83%;
+    --grey-400: 0 0% 64%;
+    --grey-500: 0 0% 45%;
+
+    /* Shadows - subtle */
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.06);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 10%;
@@ -64,7 +77,7 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 96%;
     --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 0 0% 90%;
     --sidebar-ring: 36 100% 59%;
   }
 
@@ -82,10 +95,10 @@
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 0 0% 70%;
 
-    --muted: 0 0% 25%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 35%;
+    --muted-foreground: 0 0% 55%;
 
     --accent: 36 100% 59%;
     --accent-foreground: 0 0% 100%;
@@ -96,12 +109,26 @@
     --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
     --ring: 36 100% 59%;
 
-    --primary-soft: 36 100% 59%;
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.2);
+    /* Muted accent colors for dark mode */
+    --accent-sage: 140 15% 18%;
+    --accent-stone: 30 8% 16%;
+    --accent-slate: 210 12% 18%;
+    
+    /* Grey palette - dark mode */
+    --grey-50: 0 0% 12%;
+    --grey-100: 0 0% 15%;
+    --grey-200: 0 0% 20%;
+    --grey-300: 0 0% 28%;
+    --grey-400: 0 0% 45%;
+    --grey-500: 0 0% 60%;
+
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3);
 
     --sidebar-background: 0 0% 7%;
     --sidebar-foreground: 0 0% 98%;
@@ -109,7 +136,7 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 15%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 20%;
+    --sidebar-border: 0 0% 18%;
     --sidebar-ring: 36 100% 59%;
   }
 }
@@ -124,26 +151,40 @@
   }
 }
 
-/* ORAA-Inspired Typography Utilities */
+/* Minimalist Typography */
 @layer components {
   .heading-display {
-    @apply text-4xl md:text-5xl lg:text-6xl font-bold uppercase tracking-tight;
+    @apply text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight;
   }
   
   .heading-section {
-    @apply text-2xl md:text-3xl font-bold uppercase tracking-tight;
+    @apply text-xl md:text-2xl font-semibold tracking-tight;
   }
   
   .heading-card {
-    @apply text-lg font-semibold tracking-tight;
+    @apply text-base font-medium tracking-tight;
   }
 
-  /* Soft background utilities */
-  .bg-primary-soft {
-    background-color: hsl(var(--primary) / 0.1);
+  /* Muted card backgrounds */
+  .card-muted-sage {
+    background-color: hsl(var(--accent-sage));
   }
   
-  .bg-primary-soft-hover:hover {
-    background-color: hsl(var(--primary) / 0.15);
+  .card-muted-stone {
+    background-color: hsl(var(--accent-stone));
+  }
+  
+  .card-muted-slate {
+    background-color: hsl(var(--accent-slate));
+  }
+
+  /* Subtle icon container */
+  .icon-container {
+    @apply rounded-2xl flex items-center justify-center;
+    background-color: hsl(var(--grey-100));
+  }
+  
+  .icon-container-primary {
+    background-color: hsl(var(--primary) / 0.1);
   }
 }

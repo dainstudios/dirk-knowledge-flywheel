@@ -37,11 +37,11 @@ interface ActionOption {
 }
 
 const actionOptions: ActionOption[] = [
-  { action: 'trash', icon: Trash2, label: 'Trash', selectedColor: 'bg-red-500 border-red-500 text-white', description: 'Discard' },
-  { action: 'post2team', icon: Users, label: 'Team', selectedColor: 'bg-blue-500 border-blue-500 text-white', description: 'Share to Slack' },
-  { action: 'post2linkedin', icon: Linkedin, label: 'LinkedIn', selectedColor: 'bg-sky-500 border-sky-500 text-white', description: 'Queue for LinkedIn' },
-  { action: 'post2newsletter', icon: Mail, label: 'Newsletter', selectedColor: 'bg-purple-500 border-purple-500 text-white', description: 'Queue for newsletter' },
-  { action: 'knowledge', icon: Archive, label: 'Keep', selectedColor: 'bg-green-500 border-green-500 text-white', description: 'Save to knowledge base' },
+  { action: 'trash', icon: Trash2, label: 'Trash', selectedColor: 'bg-grey-500 border-grey-500 text-white', description: 'Discard' },
+  { action: 'post2team', icon: Users, label: 'Team', selectedColor: 'bg-grey-400 border-grey-400 text-white', description: 'Share to Slack' },
+  { action: 'post2linkedin', icon: Linkedin, label: 'LinkedIn', selectedColor: 'bg-grey-400 border-grey-400 text-white', description: 'Queue for LinkedIn' },
+  { action: 'post2newsletter', icon: Mail, label: 'Newsletter', selectedColor: 'bg-grey-400 border-grey-400 text-white', description: 'Queue for newsletter' },
+  { action: 'knowledge', icon: Archive, label: 'Keep', selectedColor: 'bg-primary border-primary text-white', description: 'Save to knowledge base' },
 ];
 
 function extractDomain(url: string | null): string {
@@ -71,25 +71,25 @@ function getActionSummary(selected: Set<SelectableAction>): string {
 
 function PoolSkeleton() {
   return (
-    <Card className="max-w-2xl mx-auto shadow-sm border-border/60">
+    <Card className="max-w-2xl mx-auto">
       <CardContent className="p-0">
-        <div className="p-5 border-b border-border/50">
+        <div className="p-6 border-b border-grey-200">
           <Skeleton className="h-7 w-3/4 mb-3" />
           <div className="flex gap-2">
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-5 w-16 rounded-full" />
           </div>
         </div>
-        <div className="p-5 space-y-2">
+        <div className="p-6 space-y-2">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
           <Skeleton className="h-4 w-4/5" />
         </div>
-        <div className="p-5 border-t border-border/50">
+        <div className="p-6 border-t border-grey-200">
           <div className="flex gap-2">
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-6 w-18" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-18 rounded-full" />
           </div>
         </div>
       </CardContent>
@@ -99,15 +99,15 @@ function PoolSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
-        <CheckCircle className="h-8 w-8 text-green-600" />
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="h-16 w-16 rounded-2xl bg-grey-100 flex items-center justify-center mb-6">
+        <CheckCircle className="h-8 w-8 text-grey-400" strokeWidth={1.5} />
       </div>
-      <h2 className="text-xl font-semibold mb-2">All caught up!</h2>
-      <p className="text-muted-foreground mb-6 max-w-sm">
+      <h2 className="text-xl font-semibold mb-2 text-foreground">All caught up!</h2>
+      <p className="text-muted-foreground mb-8 max-w-sm">
         Your pool is empty. Capture some content to get started.
       </p>
-      <Button asChild>
+      <Button asChild variant="pill">
         <Link to="/capture">
           <PlusCircle className="h-5 w-5 mr-2" />
           Capture Content
@@ -117,27 +117,23 @@ function EmptyState() {
   );
 }
 
-// Credibility tier badge with colors
+// Credibility tier badge with muted colors
 function CredibilityBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
   
   const tierLower = tier.toLowerCase();
-  let colorClass = 'bg-muted text-muted-foreground border-muted';
   let label = tier;
   
   if (tierLower.includes('tier 1') || tierLower.includes('tier1') || tierLower === 'high') {
-    colorClass = 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800';
     label = 'Tier 1';
   } else if (tierLower.includes('tier 2') || tierLower.includes('tier2') || tierLower === 'medium') {
-    colorClass = 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800';
     label = 'Tier 2';
   } else if (tierLower.includes('tier 3') || tierLower.includes('tier3') || tierLower === 'low') {
-    colorClass = 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
     label = 'Tier 3';
   }
   
   return (
-    <Badge variant="outline" className={`${colorClass} text-xs font-medium`}>
+    <Badge variant="outline">
       {label}
     </Badge>
   );
@@ -147,19 +143,19 @@ function CredibilityBadge({ tier }: { tier: string | null }) {
 function ContentTypeBadge({ type }: { type: string | null }) {
   if (!type) return null;
   return (
-    <Badge variant="secondary" className="text-xs font-medium">
+    <Badge variant="default">
       {type}
     </Badge>
   );
 }
 
-// Tag badge component with category colors
+// Tag badge component with muted colors
 function TagBadge({ label, category }: { label: string; category: 'industry' | 'technology' | 'service' | 'function' }) {
   const colorMap = {
-    industry: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
-    technology: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
-    service: 'bg-primary/15 text-primary border-primary/30',
-    function: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700',
+    industry: 'bg-grey-100 text-grey-500 border-grey-200',
+    technology: 'bg-grey-100 text-grey-500 border-grey-200',
+    service: 'bg-primary/10 text-primary border-primary/20',
+    function: 'bg-grey-100 text-grey-500 border-grey-200',
   };
   
   return (
@@ -317,13 +313,13 @@ export default function Pool() {
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
 
-      <main className="container max-w-2xl mx-auto px-4 py-6 md:py-8">
+      <main className="container max-w-2xl mx-auto px-4 py-8 md:py-10">
         {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Review Pool</h1>
+            <h1 className="heading-section text-foreground">Review Pool</h1>
             {totalItems > 0 && (
-              <Badge variant="secondary" className="text-sm">
+              <Badge variant="secondary">
                 {totalItems}
               </Badge>
             )}
@@ -345,13 +341,13 @@ export default function Pool() {
             {/* Pool Card */}
             <Card 
               className={cn(
-                'transition-all duration-200 shadow-sm border-border/60 overflow-hidden',
+                'transition-all duration-200 overflow-hidden',
                 exitingId === currentItem.id && 'opacity-0 translate-x-4'
               )}
             >
               <CardContent className="p-0">
                 {/* Header Section */}
-                <div className="p-5 border-b border-border/50">
+                <div className="p-6 border-b border-grey-200">
                   {/* Editable Title */}
                   <EditableTitle
                     title={currentItem.title}
@@ -410,7 +406,7 @@ export default function Pool() {
                 </div>
 
                 {/* Summary Section */}
-                <div className="p-5 border-b border-border/50">
+                <div className="p-6 border-b border-grey-200">
                   {currentItem.summary ? (
                     (() => {
                       const bullets = parseSummaryBullets(currentItem.summary);
@@ -419,7 +415,7 @@ export default function Pool() {
                           <ul className="space-y-2 text-foreground/90">
                             {bullets.map((bullet, i) => (
                               <li key={i} className="flex items-start gap-2 leading-relaxed">
-                                <span className="text-primary mt-1.5 text-xs">•</span>
+                                <span className="text-grey-400 mt-1.5 text-xs">•</span>
                                 <FormattedText content={bullet} as="span" />
                               </li>
                             ))}
@@ -442,9 +438,9 @@ export default function Pool() {
 
                 {/* Study Methodology Section (for Research Reports) */}
                 {currentItem.methodology && (
-                  <div className="px-5 py-4 border-b border-border/50 bg-blue-50/50 dark:bg-blue-950/20">
-                    <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                      <FlaskConical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
+                    <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
                       Study Methodology
                     </h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
@@ -455,7 +451,7 @@ export default function Pool() {
 
                 {/* User Notes */}
                 {currentItem.user_notes && (
-                  <div className="px-5 py-4 border-b border-border/50 bg-muted/30">
+                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
                     <p className="text-sm text-muted-foreground italic">
                       Your note: &ldquo;{currentItem.user_notes}&rdquo;
                     </p>
@@ -464,8 +460,8 @@ export default function Pool() {
 
                 {/* DAIN Context Section */}
                 {currentItem.dain_context && (
-                  <div className="p-5 border-b border-border/50 bg-primary/5 border-l-4 border-l-primary">
-                    <h3 className="text-sm font-semibold text-primary mb-2">
+                  <div className="p-6 border-b border-grey-200 bg-primary/5 border-l-4 border-l-primary">
+                    <h3 className="text-sm font-medium text-primary mb-2">
                       Why it matters for DAIN
                     </h3>
                     <FormattedText 
@@ -477,9 +473,9 @@ export default function Pool() {
 
                 {/* Quotables Section with Highlighting */}
                 {currentItem.quotables && currentItem.quotables.length > 0 && (
-                  <div className="p-5 border-b border-border/50">
-                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Quote className="h-4 w-4 text-muted-foreground" />
+                  <div className="p-6 border-b border-grey-200">
+                    <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                      <Quote className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
                       Key Quotes
                       <span className="text-xs font-normal text-muted-foreground">(click ⭐ to highlight)</span>
                     </h3>
@@ -506,7 +502,7 @@ export default function Pool() {
 
                 {/* Tags Section */}
                 {hasTags && (
-                  <div className="p-5 border-b border-border/50">
+                  <div className="p-6 border-b border-grey-200">
                     <div className="flex flex-wrap gap-2">
                       {currentItem.industries?.slice(0, 4).map((tag) => (
                         <TagBadge key={`ind-${tag}`} label={tag} category="industry" />
@@ -525,7 +521,7 @@ export default function Pool() {
                 )}
 
                 {/* Metadata Footer */}
-                <div className="px-5 py-3 bg-muted/20 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <div className="px-6 py-3 bg-grey-50 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <MetadataItem label="Actionability" value={currentItem.actionability} />
                   <MetadataItem label="Timeliness" value={currentItem.timeliness} />
                   <MetadataItem label="Relevance" value={currentItem.dain_relevance} />
@@ -542,7 +538,7 @@ export default function Pool() {
                 />
 
                 {/* Action Selection - Desktop */}
-                <div className="hidden md:block p-4 border-t border-border/50 bg-background space-y-4">
+                <div className="hidden md:block p-5 border-t border-grey-200 bg-background space-y-4">
                   <div className="flex items-center gap-2 flex-wrap">
                     {actionOptions.map(({ action, icon: Icon, label, selectedColor }) => {
                       const isSelected = selectedActions.has(action);
@@ -555,10 +551,10 @@ export default function Pool() {
                           onClick={() => toggleAction(action)}
                           disabled={isDisabled}
                           className={cn(
-                            'inline-flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
+                            'inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-sm font-medium',
                             isSelected
                               ? selectedColor
-                              : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/50',
+                              : 'border-grey-200 bg-background text-grey-500 hover:border-grey-300 hover:text-foreground',
                             isDisabled && 'opacity-50 cursor-not-allowed'
                           )}
                         >
@@ -601,7 +597,7 @@ export default function Pool() {
 
       {/* Mobile Action Buttons */}
       {!isLoading && totalItems > 0 && currentItem && (
-        <div className="md:hidden fixed bottom-16 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 space-y-3">
+        <div className="md:hidden fixed bottom-16 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-grey-200 p-3 space-y-3">
           <div className="flex items-center gap-2 flex-wrap justify-center">
             {actionOptions.map(({ action, icon: Icon, label, selectedColor }) => {
               const isSelected = selectedActions.has(action);
@@ -614,10 +610,10 @@ export default function Pool() {
                   onClick={() => toggleAction(action)}
                   disabled={isDisabled}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border-2 transition-all text-xs font-medium',
+                    'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all text-xs font-medium',
                     isSelected
                       ? selectedColor
-                      : 'border-border bg-background text-muted-foreground',
+                      : 'border-grey-200 bg-background text-grey-500',
                     isDisabled && 'opacity-50 cursor-not-allowed'
                   )}
                 >

@@ -2,7 +2,7 @@ import { Header, LoadingState } from '@/components/common';
 import { useKnowledgeBase } from '@/hooks/useKnowledgeBase';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Search, MessageSquare, Quote, Image as ImageIcon } from 'lucide-react';
+import { Search, MessageSquare, Quote, Image as ImageIcon } from 'lucide-react';
 import { SearchTab, AskAITab, FindQuoteTab, ImagesTab } from '@/components/knowledge';
 
 export default function Knowledge() {
@@ -12,7 +12,7 @@ export default function Knowledge() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-6 pb-20 md:pb-6">
+        <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
           <LoadingState message="Loading knowledge base..." />
         </main>
       </div>
@@ -22,13 +22,12 @@ export default function Knowledge() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-6 pb-20 md:pb-6">
+      <main className="container mx-auto px-4 py-8 pb-20 md:pb-8">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Knowledge Base</h1>
-            <Badge variant="secondary" className="text-sm">
+        <div className="mb-8">
+          <div className="flex items-center gap-3">
+            <h1 className="heading-section text-foreground">Knowledge Base</h1>
+            <Badge variant="secondary">
               {items.length} items
             </Badge>
           </div>
@@ -36,21 +35,21 @@ export default function Knowledge() {
 
         {/* Tabs */}
         <Tabs defaultValue="search" className="space-y-6">
-          <TabsList className="w-full flex flex-wrap sm:inline-flex sm:w-auto">
-            <TabsTrigger value="search" className="flex-1 sm:flex-none gap-2">
-              <Search className="h-4 w-4" />
+          <TabsList className="flex flex-wrap gap-1 p-1 bg-grey-100 rounded-xl">
+            <TabsTrigger value="search" className="gap-2">
+              <Search className="h-4 w-4" strokeWidth={1.5} />
               Search
             </TabsTrigger>
-            <TabsTrigger value="ask" className="flex-1 sm:flex-none gap-2">
-              <MessageSquare className="h-4 w-4" />
+            <TabsTrigger value="ask" className="gap-2">
+              <MessageSquare className="h-4 w-4" strokeWidth={1.5} />
               Ask AI
             </TabsTrigger>
-            <TabsTrigger value="quote" className="flex-1 sm:flex-none gap-2">
-              <Quote className="h-4 w-4" />
+            <TabsTrigger value="quote" className="gap-2">
+              <Quote className="h-4 w-4" strokeWidth={1.5} />
               Find Quote
             </TabsTrigger>
-            <TabsTrigger value="images" className="flex-1 sm:flex-none gap-2">
-              <ImageIcon className="h-4 w-4" />
+            <TabsTrigger value="images" className="gap-2">
+              <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
               Images
             </TabsTrigger>
           </TabsList>
