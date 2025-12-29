@@ -24,6 +24,16 @@ export interface KnowledgeItem {
   infographic_url: string | null;
   infographic_generated_at: string | null;
   infographic_type: string | null;
+  // Sharing status fields
+  shared_to_team: boolean | null;
+  shared_to_team_at: string | null;
+  queued_for_linkedin: boolean | null;
+  queued_for_linkedin_at: string | null;
+  queued_for_newsletter: boolean | null;
+  queued_for_newsletter_at: string | null;
+  // Pool functionality fields
+  highlighted_quotes: number[] | null;
+  curator_notes: string | null;
 }
 
 export interface KnowledgeFilters {
@@ -39,7 +49,7 @@ export function useKnowledgeBase() {
     queryFn: async (): Promise<KnowledgeItem[]> => {
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, created_at, infographic_url, infographic_generated_at, infographic_type')
+        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, created_at, infographic_url, infographic_generated_at, infographic_type, shared_to_team, shared_to_team_at, queued_for_linkedin, queued_for_linkedin_at, queued_for_newsletter, queued_for_newsletter_at, highlighted_quotes, curator_notes')
         .eq('status', 'knowledge')
         .order('created_at', { ascending: false });
 
