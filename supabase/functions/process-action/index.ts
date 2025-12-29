@@ -366,10 +366,10 @@ function buildContentFromExisting(item: any): FormattedContent {
     ? `${author} ${methodology}`
     : `${author} presents key findings on ${item.title || 'this topic'}`;
   
-  // Use key_insights directly - format them with **Label:** structure
+  // Use key_insights directly - preserve natural formatting without adding generic labels
   const rawInsights = item.key_insights || [];
-  const key_findings = rawInsights.map((insight: string) => {
-    if (!insight) return '**Insight:** Key finding from this content';
+  const key_findings = rawInsights.map((insight: string, index: number) => {
+    if (!insight) return `**Finding ${index + 1}:** Key finding from this content`;
     // If already has bold formatting, keep it
     if (insight.includes('**')) return insight;
     // Try to detect a natural label (first phrase before colon)
@@ -379,8 +379,15 @@ function buildContentFromExisting(item: any): FormattedContent {
       const rest = insight.substring(colonIndex + 1).trim();
       return `**${label}:** ${rest}`;
     }
-    // Otherwise add a generic label
-    return `**Key Insight:** ${insight}`;
+    // No natural label - extract meaningful words from the insight itself
+    const words = insight.split(' ');
+    if (words.length >= 3) {
+      // Use first 2-3 meaningful words as label
+      const labelWords = words.slice(0, 3).join(' ').replace(/[,.:;]$/, '');
+      return `**${labelWords}:** ${insight}`;
+    }
+    // Fallback: use numbered finding
+    return `**Finding ${index + 1}:** ${insight}`;
   });
   
   // Use dain_context directly
