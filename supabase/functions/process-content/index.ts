@@ -28,6 +28,15 @@ interface ProcessedContent {
   industries: string[];
   technologies: string[];
   service_lines: string[];
+  // Restored fields for rich analysis
+  methodology: string | null;
+  dain_relevance: string;
+  source_credibility: string;
+  actionability: string;
+  timeliness: string;
+  business_functions: string[];
+  author: string | null;
+  author_organization: string | null;
 }
 
 // Valid content_type values from DB constraint
@@ -36,21 +45,29 @@ const VALID_CONTENT_TYPES = [
   'Case Study', 'How-To / Guide', 'Tool/Product', 'Field Guide', 'Video'
 ];
 
-const CONTENT_EXTRACTION_PROMPT = `You are an expert content analyst for DAIN Studios, a data & AI consultancy. Analyze the provided content and extract structured information.
+const CONTENT_EXTRACTION_PROMPT = `You are an expert content analyst for DAIN Studios, a data & AI consultancy. Analyze the provided content and extract comprehensive structured information.
 
 Return a JSON object with these fields:
 {
-  "summary": "A 2-3 sentence executive summary of the content (max 200 words)",
-  "key_insights": ["Array of 3-5 key insights or takeaways from the content"],
-  "dain_context": "How this content is relevant to DAIN Studios' work in data strategy, AI implementation, analytics, or digital transformation (1-2 sentences)",
-  "quotables": ["Array of 2-3 notable quotes or statistics from the content that could be cited"],
+  "summary": "A 2-3 sentence executive summary of the content (max 200 words). Be specific about the main findings, not generic.",
+  "key_insights": ["Array of 3-5 key insights or takeaways from the content. Each should be a complete, actionable insight."],
+  "dain_context": "How this content is relevant to DAIN Studios' work in data strategy, AI implementation, analytics, or digital transformation (2-3 sentences with specific applications)",
+  "quotables": ["Array of 2-4 notable quotes or statistics from the content that could be cited. Include specific numbers, percentages, or impactful statements."],
   "content_type": "MUST be exactly one of: Research Report, Industry Analysis, Thought Piece, News, Case Study, How-To / Guide, Tool/Product, Field Guide, Video",
-  "industries": ["Array of relevant industries mentioned or applicable, e.g., Healthcare, Finance, Retail, Manufacturing"],
-  "technologies": ["Array of technologies mentioned, e.g., Machine Learning, GenAI, Data Analytics, Cloud"],
-  "service_lines": ["Array of DAIN service lines this relates to: Data Strategy, AI Implementation, Analytics, Digital Transformation, Data Governance"]
+  "industries": ["Array of relevant industries mentioned or applicable, e.g., Healthcare, Finance, Retail, Manufacturing, Energy, Technology"],
+  "technologies": ["Array of technologies mentioned, e.g., Machine Learning, GenAI, LLM, Data Analytics, Cloud, IoT, Computer Vision"],
+  "service_lines": ["Array of DAIN service lines this relates to: Data Strategy, AI Implementation, Analytics, Digital Transformation, Data Governance"],
+  "methodology": "Research approach and methods used in the content (e.g., 'Survey of 500 executives', 'Case study analysis', 'Literature review'). Return null if not applicable or not mentioned.",
+  "dain_relevance": "Rate overall relevance to DAIN's work. MUST be exactly one of: High, Medium, Low",
+  "source_credibility": "Rate source credibility. MUST be exactly one of: Tier 1 (academic/major research institution/top consulting firm), Tier 2 (industry publication/established company), Tier 3 (blog/opinion piece/unknown source)",
+  "actionability": "How actionable is this content? MUST be exactly one of: Direct Use (can apply immediately), Strategic Context (informs strategy), Reference Only (background knowledge)",
+  "timeliness": "Content freshness. MUST be exactly one of: Current (recent/cutting-edge), Evergreen (timeless principles), Dated (older but potentially relevant)",
+  "business_functions": ["Array of business departments this applies to, e.g., R&D, IT, Marketing, Operations, Finance, HR, Sales, Executive Leadership"],
+  "author": "Primary author name if mentioned. Return null if not found.",
+  "author_organization": "Author's organization/institution/company if mentioned. Return null if not found."
 }
 
-Be concise and specific. Focus on business and technology insights relevant to a data & AI consultancy.`;
+Be thorough and specific. Extract real quotes and statistics when available. Focus on business and technology insights relevant to a data & AI consultancy.`;
 
 async function extractContentWithAI(item: KnowledgeItem, googleApiKey: string): Promise<ProcessedContent> {
   // Clean content: remove base64 data, very long URLs, and truncate
@@ -58,7 +75,7 @@ async function extractContentWithAI(item: KnowledgeItem, googleApiKey: string): 
   const cleanedContent = rawContent
     .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[base64 data removed]')
     .replace(/https?:\/\/[^\s]{200,}/g, '[long URL removed]')
-    .substring(0, 8000);
+    .substring(0, 12000); // Increased to capture more content for richer analysis
   
   const prompt = `Analyze this content:
 
@@ -84,7 +101,7 @@ ${cleanedContent || 'No content available'}`;
           contents: [{ parts: [{ text: `${CONTENT_EXTRACTION_PROMPT}\n\n${prompt}` }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 2000,
+            maxOutputTokens: 4000, // Increased for richer extraction
             responseMimeType: 'application/json',
           },
         }),
@@ -111,28 +128,51 @@ ${cleanedContent || 'No content available'}`;
       ? parsed.content_type 
       : 'Thought Piece';
 
+    // Validate enum fields
+    const validRelevance = ['High', 'Medium', 'Low'];
+    const validCredibility = ['Tier 1', 'Tier 2', 'Tier 3'];
+    const validActionability = ['Direct Use', 'Strategic Context', 'Reference Only'];
+    const validTimeliness = ['Current', 'Evergreen', 'Dated'];
+
     return {
       summary: parsed.summary || `Analysis of: ${item.title}`,
       key_insights: Array.isArray(parsed.key_insights) ? parsed.key_insights.slice(0, 5) : [],
       dain_context: parsed.dain_context || 'Relevant to data and AI consulting.',
-      quotables: Array.isArray(parsed.quotables) ? parsed.quotables.slice(0, 3) : [],
+      quotables: Array.isArray(parsed.quotables) ? parsed.quotables.slice(0, 4) : [],
       content_type: contentType,
       industries: Array.isArray(parsed.industries) ? parsed.industries : [],
       technologies: Array.isArray(parsed.technologies) ? parsed.technologies : [],
       service_lines: Array.isArray(parsed.service_lines) ? parsed.service_lines : [],
+      // Restored fields with validation
+      methodology: parsed.methodology || null,
+      dain_relevance: validRelevance.includes(parsed.dain_relevance) ? parsed.dain_relevance : 'Medium',
+      source_credibility: validCredibility.includes(parsed.source_credibility) ? parsed.source_credibility : 'Tier 2',
+      actionability: validActionability.includes(parsed.actionability) ? parsed.actionability : 'Strategic Context',
+      timeliness: validTimeliness.includes(parsed.timeliness) ? parsed.timeliness : 'Current',
+      business_functions: Array.isArray(parsed.business_functions) ? parsed.business_functions : [],
+      author: parsed.author || null,
+      author_organization: parsed.author_organization || null,
     };
   } catch (error) {
     console.error(`AI extraction failed for ${item.id}:`, error);
-    // Return minimal fallback with valid content_type
+    // Return minimal fallback with valid values
     return {
       summary: item.summary || `Content from: ${item.title}`,
       key_insights: [],
       dain_context: 'Pending detailed analysis.',
       quotables: [],
-      content_type: 'Thought Piece',  // Valid fallback
+      content_type: 'Thought Piece',
       industries: [],
       technologies: [],
       service_lines: [],
+      methodology: null,
+      dain_relevance: 'Medium',
+      source_credibility: 'Tier 2',
+      actionability: 'Reference Only',
+      timeliness: 'Current',
+      business_functions: [],
+      author: null,
+      author_organization: null,
     };
   }
 }
@@ -191,7 +231,7 @@ serve(async (req) => {
         // Extract content with AI
         const processed = await extractContentWithAI(item, googleApiKey);
 
-        // Update the item
+        // Update the item with all fields including restored ones
         const { error: updateError } = await supabase
           .from('knowledge_items')
           .update({
@@ -203,6 +243,16 @@ serve(async (req) => {
             industries: processed.industries,
             technologies: processed.technologies,
             service_lines: processed.service_lines,
+            // Restored fields
+            methodology: processed.methodology,
+            dain_relevance: processed.dain_relevance,
+            source_credibility: processed.source_credibility,
+            actionability: processed.actionability,
+            timeliness: processed.timeliness,
+            business_functions: processed.business_functions,
+            author: processed.author,
+            author_organization: processed.author_organization,
+            // Status and timestamp
             status: 'pool',
             processed_at: new Date().toISOString(),
           })
