@@ -2,7 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Header, LoadingState, FormattedText } from '@/components/common';
-import { InfographicSection } from '@/components/knowledge/InfographicSection';
+import { InfographicSection, SharingStatusBadges } from '@/components/knowledge';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,16 @@ import {
   Quote,
   Clock,
   AlertCircle,
+  Users,
+  Linkedin,
+  Mail,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { KnowledgeItem } from '@/hooks/useKnowledgeBase';
+import { useKnowledgeActions } from '@/hooks/useKnowledgeActions';
+import { EditableTitle } from '@/components/pool/EditableTitle';
+import { HighlightableQuote } from '@/components/pool/HighlightableQuote';
+import { NotesEditor } from '@/components/pool/NotesEditor';
 
 function TagBadge({ tag, variant }: { tag: string; variant: 'industry' | 'technology' | 'service' | 'function' }) {
   const colors = {
@@ -56,6 +63,7 @@ function parseSummaryBullets(summary: string): string[] | null {
 
 export default function KnowledgeItemDetail() {
   const { id } = useParams<{ id: string }>();
+  const { updateKnowledgeItem, processAction, isUpdating, isProcessing } = useKnowledgeActions();
 
   const { data: item, isLoading, error, refetch } = useQuery({
     queryKey: ['knowledge-item', id],
@@ -63,7 +71,7 @@ export default function KnowledgeItemDetail() {
       if (!id) return null;
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, created_at, infographic_url, infographic_generated_at, infographic_type')
+        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, created_at, infographic_url, infographic_generated_at, infographic_type, shared_to_team, shared_to_team_at, queued_for_linkedin, queued_for_linkedin_at, queued_for_newsletter, queued_for_newsletter_at, highlighted_quotes, curator_notes')
         .eq('id', id)
         .single();
 
@@ -72,6 +80,30 @@ export default function KnowledgeItemDetail() {
     },
     enabled: !!id,
   });
+
+  const handleTitleSave = (newTitle: string) => {
+    if (!id) return;
+    updateKnowledgeItem.mutate({ id, updates: { title: newTitle } });
+  };
+
+  const handleNotesSave = (newNotes: string) => {
+    if (!id) return;
+    updateKnowledgeItem.mutate({ id, updates: { curator_notes: newNotes } });
+  };
+
+  const handleQuoteToggle = (index: number) => {
+    if (!id || !item) return;
+    const current = item.highlighted_quotes || [];
+    const updated = current.includes(index)
+      ? current.filter(i => i !== index)
+      : [...current, index];
+    updateKnowledgeItem.mutate({ id, updates: { highlighted_quotes: updated } });
+  };
+
+  const handleProcessAction = (action: 'post2team' | 'post2linkedin' | 'post2newsletter') => {
+    if (!id) return;
+    processAction.mutate({ itemId: id, action });
+  };
 
   if (isLoading) {
     return (
@@ -122,8 +154,13 @@ export default function KnowledgeItemDetail() {
 
         {/* Title & Meta */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-3">{item.title}</h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <EditableTitle
+            title={item.title}
+            onSave={handleTitleSave}
+            isLoading={isUpdating}
+            className="text-2xl font-bold text-foreground mb-3"
+          />
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             {item.content_type && (
               <Badge variant="secondary">{item.content_type}</Badge>
             )}
@@ -134,8 +171,19 @@ export default function KnowledgeItemDetail() {
             </span>
           </div>
 
+          {/* Sharing Status */}
+          <SharingStatusBadges
+            sharedToTeam={item.shared_to_team}
+            sharedToTeamAt={item.shared_to_team_at}
+            queuedForLinkedin={item.queued_for_linkedin}
+            queuedForLinkedinAt={item.queued_for_linkedin_at}
+            queuedForNewsletter={item.queued_for_newsletter}
+            queuedForNewsletterAt={item.queued_for_newsletter_at}
+            className="mb-3"
+          />
+
           {/* Links */}
-          <div className="flex gap-3 mt-3">
+          <div className="flex gap-3">
             {item.url && (
               <a
                 href={item.url}
@@ -160,6 +208,43 @@ export default function KnowledgeItemDetail() {
             )}
           </div>
         </div>
+
+        {/* Quick Actions */}
+        <Card className="p-4 mb-4 bg-muted/30">
+          <h3 className="font-medium text-foreground mb-3">Quick Actions</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleProcessAction('post2team')}
+              disabled={isProcessing}
+              className="gap-1"
+            >
+              <Users className="h-3 w-3" />
+              {item.shared_to_team ? 'Share Again' : 'Share to Team'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleProcessAction('post2linkedin')}
+              disabled={isProcessing}
+              className="gap-1"
+            >
+              <Linkedin className="h-3 w-3" />
+              {item.queued_for_linkedin ? 'Re-queue' : 'Queue for LinkedIn'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleProcessAction('post2newsletter')}
+              disabled={isProcessing}
+              className="gap-1"
+            >
+              <Mail className="h-3 w-3" />
+              {item.queued_for_newsletter ? 'Re-queue' : 'Queue for Newsletter'}
+            </Button>
+          </div>
+        </Card>
 
         {/* Summary */}
         {item.summary && (
@@ -195,25 +280,37 @@ export default function KnowledgeItemDetail() {
           </Card>
         )}
 
-        {/* Quotables */}
+        {/* Highlightable Quotes */}
         {item.quotables && item.quotables.length > 0 && (
           <Card className="p-6 mb-4">
             <div className="flex items-center gap-2 mb-3">
               <Quote className="h-5 w-5 text-muted-foreground" />
               <h3 className="font-semibold text-foreground">Key Quotes</h3>
+              <span className="text-xs text-muted-foreground">(click star to highlight)</span>
             </div>
             <div className="space-y-3">
               {item.quotables.map((quote, i) => (
-                <blockquote
+                <HighlightableQuote
                   key={i}
-                  className="border-l-2 border-primary/50 pl-4 text-sm italic text-foreground/80"
-                >
-                  "{quote}"
-                </blockquote>
+                  quote={quote}
+                  index={i}
+                  isHighlighted={item.highlighted_quotes?.includes(i) || false}
+                  onToggle={handleQuoteToggle}
+                  disabled={isUpdating}
+                />
               ))}
             </div>
           </Card>
         )}
+
+        {/* Curator Notes */}
+        <Card className="p-6 mb-4">
+          <NotesEditor
+            notes={item.curator_notes || ''}
+            onSave={handleNotesSave}
+            isLoading={isUpdating}
+          />
+        </Card>
 
         {/* User Notes */}
         {item.user_notes && (

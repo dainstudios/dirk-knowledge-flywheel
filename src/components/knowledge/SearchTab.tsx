@@ -17,6 +17,11 @@ import {
   Sparkles,
   Quote,
   Clock,
+  Users,
+  Linkedin,
+  Mail,
+  Star,
+  StickyNote,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,6 +31,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import { KnowledgeItem, KnowledgeFilters, filterKnowledgeItems } from '@/hooks/useKnowledgeBase';
+import { useKnowledgeActions } from '@/hooks/useKnowledgeActions';
+import { SharingStatusBadges } from './SharingStatusBadges';
+import { EditableTitle } from '@/components/pool/EditableTitle';
+import { HighlightableQuote } from '@/components/pool/HighlightableQuote';
+import { NotesEditor } from '@/components/pool/NotesEditor';
 
 // Badge components
 function ContentTypeBadge({ type }: { type: string | null }) {
@@ -129,10 +139,18 @@ function KnowledgeCard({
   item,
   isExpanded,
   onToggle,
+  onUpdateItem,
+  isUpdating,
+  onProcessAction,
+  isProcessing,
 }: {
   item: KnowledgeItem;
   isExpanded: boolean;
   onToggle: () => void;
+  onUpdateItem: (id: string, updates: { title?: string; curator_notes?: string; highlighted_quotes?: number[] }) => void;
+  isUpdating: boolean;
+  onProcessAction: (itemId: string, action: 'post2team' | 'post2linkedin' | 'post2newsletter') => void;
+  isProcessing: boolean;
 }) {
   const allTags = [
     ...(item.industries?.map(t => ({ tag: t, variant: 'industry' as const })) || []),
@@ -147,13 +165,39 @@ function KnowledgeCard({
     ? item.summary.replace(/•/g, '').replace(/\n/g, ' ').substring(0, 150) + (item.summary.length > 150 ? '...' : '')
     : null;
 
+  const handleTitleSave = (newTitle: string) => {
+    onUpdateItem(item.id, { title: newTitle });
+  };
+
+  const handleNotesSave = (newNotes: string) => {
+    onUpdateItem(item.id, { curator_notes: newNotes });
+  };
+
+  const handleQuoteToggle = (index: number) => {
+    const current = item.highlighted_quotes || [];
+    const updated = current.includes(index)
+      ? current.filter(i => i !== index)
+      : [...current, index];
+    onUpdateItem(item.id, { highlighted_quotes: updated });
+  };
+
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
-      <div className="p-4 cursor-pointer" onClick={onToggle}>
-        <div className="flex items-start justify-between gap-3">
+      <div className="p-4">
+        {/* Header - always visible */}
+        <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={onToggle}>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-foreground truncate">{item.title}</h3>
+              {isExpanded ? (
+                <EditableTitle
+                  title={item.title}
+                  onSave={handleTitleSave}
+                  isLoading={isUpdating}
+                  className="flex-1"
+                />
+              ) : (
+                <h3 className="font-semibold text-foreground truncate">{item.title}</h3>
+              )}
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               ) : (
@@ -168,6 +212,15 @@ function KnowledgeCard({
                 <Clock className="h-3 w-3" />
                 {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
               </span>
+              {/* Sharing status badges */}
+              <SharingStatusBadges
+                sharedToTeam={item.shared_to_team}
+                sharedToTeamAt={item.shared_to_team_at}
+                queuedForLinkedin={item.queued_for_linkedin}
+                queuedForLinkedinAt={item.queued_for_linkedin_at}
+                queuedForNewsletter={item.queued_for_newsletter}
+                queuedForNewsletterAt={item.queued_for_newsletter_at}
+              />
             </div>
 
             {!isExpanded && truncatedSummary && (
@@ -251,24 +304,37 @@ function KnowledgeCard({
             </div>
           )}
 
+          {/* Highlightable Quotes */}
           {item.quotables && item.quotables.length > 0 && (
             <div className="p-4 border-b border-border/50">
               <div className="flex items-center gap-2 mb-3">
                 <Quote className="h-4 w-4 text-muted-foreground" />
                 <h4 className="text-sm font-medium text-muted-foreground">Key Quotes</h4>
+                <span className="text-xs text-muted-foreground">(click star to highlight)</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                 {item.quotables.map((quote, i) => (
-                  <blockquote
+                  <HighlightableQuote
                     key={i}
-                    className="border-l-2 border-primary/50 pl-3 text-sm italic text-foreground/80"
-                  >
-                    "{quote}"
-                  </blockquote>
+                    quote={quote}
+                    index={i}
+                    isHighlighted={item.highlighted_quotes?.includes(i) || false}
+                    onToggle={handleQuoteToggle}
+                    disabled={isUpdating}
+                  />
                 ))}
               </div>
             </div>
           )}
+
+          {/* Curator Notes */}
+          <div className="p-4 border-b border-border/50" onClick={(e) => e.stopPropagation()}>
+            <NotesEditor
+              notes={item.curator_notes || ''}
+              onSave={handleNotesSave}
+              isLoading={isUpdating}
+            />
+          </div>
 
           <div className="p-4 border-b border-border/50">
             <h4 className="text-sm font-medium text-muted-foreground mb-3">Tags</h4>
@@ -316,6 +382,43 @@ function KnowledgeCard({
             </div>
           </div>
 
+          {/* Actions section */}
+          <div className="p-4 border-b border-border/50 bg-muted/30" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h4>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onProcessAction(item.id, 'post2team')}
+                disabled={isProcessing}
+                className="gap-1"
+              >
+                <Users className="h-3 w-3" />
+                {item.shared_to_team ? 'Share Again' : 'Share to Team'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onProcessAction(item.id, 'post2linkedin')}
+                disabled={isProcessing}
+                className="gap-1"
+              >
+                <Linkedin className="h-3 w-3" />
+                {item.queued_for_linkedin ? 'Re-queue' : 'Queue for LinkedIn'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onProcessAction(item.id, 'post2newsletter')}
+                disabled={isProcessing}
+                className="gap-1"
+              >
+                <Mail className="h-3 w-3" />
+                {item.queued_for_newsletter ? 'Re-queue' : 'Queue for Newsletter'}
+              </Button>
+            </div>
+          </div>
+
           <div className="p-4 border-t border-border/50 flex items-center justify-between">
             <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
               {item.actionability && <span>Actionability: {item.actionability}</span>}
@@ -360,6 +463,16 @@ export function SearchTab({ items, filterOptions }: SearchTabProps) {
   });
   const [page, setPage] = useState(1);
   const itemsPerPage = 20;
+
+  const { updateKnowledgeItem, processAction, isUpdating, isProcessing } = useKnowledgeActions();
+
+  const handleUpdateItem = (id: string, updates: { title?: string; curator_notes?: string; highlighted_quotes?: number[] }) => {
+    updateKnowledgeItem.mutate({ id, updates });
+  };
+
+  const handleProcessAction = (itemId: string, action: 'post2team' | 'post2linkedin' | 'post2newsletter') => {
+    processAction.mutate({ itemId, action });
+  };
 
   const toggleFilter = (key: keyof KnowledgeFilters, value: string) => {
     setFilters(prev => ({
@@ -553,6 +666,10 @@ export function SearchTab({ items, filterOptions }: SearchTabProps) {
                   item={item}
                   isExpanded={expandedId === item.id}
                   onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  onUpdateItem={handleUpdateItem}
+                  isUpdating={isUpdating}
+                  onProcessAction={handleProcessAction}
+                  isProcessing={isProcessing}
                 />
               ))}
 
