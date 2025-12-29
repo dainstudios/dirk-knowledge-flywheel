@@ -66,8 +66,21 @@ export function useKnowledgeActions() {
       action: 'post2team' | 'post2linkedin' | 'post2newsletter'; 
       postOption?: string;
     }) => {
+      // Map frontend action names to backend action object format
+      const actionMap: Record<string, string> = {
+        'post2team': 'team',
+        'post2linkedin': 'linkedin',
+        'post2newsletter': 'newsletter',
+      };
+      
+      const actionKey = actionMap[action] || action;
+      
       const { data, error } = await supabase.functions.invoke('process-action', {
-        body: { itemId, action, postOption },
+        body: { 
+          item_id: itemId, 
+          actions: { [actionKey]: true },
+          post_option: postOption 
+        },
       });
 
       if (error) throw error;

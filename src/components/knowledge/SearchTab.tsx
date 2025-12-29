@@ -181,12 +181,15 @@ function KnowledgeCard({
     onUpdateItem(item.id, { highlighted_quotes: updated });
   };
 
+  // Check if item has been shared anywhere
+  const hasBeenShared = item.shared_to_team || item.queued_for_linkedin || item.queued_for_newsletter;
+
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
+    <Card className={`overflow-hidden transition-all hover:shadow-md ${hasBeenShared ? 'border-l-4 border-l-primary/60' : ''}`}>
       <div className="p-4">
         {/* Header - always visible */}
-        <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={onToggle}>
-          <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggle}>
             <div className="flex items-center gap-2 mb-2">
               {isExpanded ? (
                 <EditableTitle
@@ -241,31 +244,44 @@ function KnowledgeCard({
             )}
           </div>
 
-          <div className="flex flex-col gap-1 flex-shrink-0">
-            {item.google_drive_url && (
-              <a
-                href={item.google_drive_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <FileText className="h-3 w-3" />
-                PDF
-              </a>
-            )}
-            {item.url && (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <ExternalLink className="h-3 w-3" />
-                Source
-              </a>
-            )}
+          <div className="flex flex-col gap-2 flex-shrink-0 items-end">
+            {/* Prominent View Details button - always visible */}
+            <Link
+              to={`/knowledge/${item.id}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Button variant="outline" size="sm" className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10">
+                <BookOpen className="h-3.5 w-3.5" />
+                View Details
+              </Button>
+            </Link>
+            
+            <div className="flex gap-2">
+              {item.google_drive_url && (
+                <a
+                  href={item.google_drive_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                >
+                  <FileText className="h-3 w-3" />
+                  PDF
+                </a>
+              )}
+              {item.url && (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Source
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -419,20 +435,12 @@ function KnowledgeCard({
             </div>
           </div>
 
-          <div className="p-4 border-t border-border/50 flex items-center justify-between">
+          <div className="p-4 border-t border-border/50">
             <div className="text-xs text-muted-foreground flex flex-wrap gap-4">
               {item.actionability && <span>Actionability: {item.actionability}</span>}
               {item.timeliness && <span>Timeliness: {item.timeliness}</span>}
               {item.dain_relevance && <span>Relevance: {item.dain_relevance}</span>}
             </div>
-            <Link
-              to={`/knowledge/${item.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-xs text-primary hover:underline flex items-center gap-1"
-            >
-              <BookOpen className="h-3 w-3" />
-              View Details
-            </Link>
           </div>
         </div>
       )}
