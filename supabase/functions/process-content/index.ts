@@ -14,9 +14,12 @@ interface KnowledgeItem {
   id: string;
   title: string;
   url: string | null;
+  google_drive_url: string | null;
+  google_drive_id: string | null;
   content: string | null;
   summary: string | null;
   user_id: string;
+  content_type: string | null;
 }
 
 interface ProcessedContent {
@@ -28,7 +31,6 @@ interface ProcessedContent {
   industries: string[];
   technologies: string[];
   service_lines: string[];
-  // Restored fields for rich analysis
   methodology: string | null;
   dain_relevance: string;
   source_credibility: string;
@@ -69,23 +71,234 @@ Return a JSON object with these fields:
 
 Be thorough and specific. Extract real quotes and statistics when available. Focus on business and technology insights relevant to a data & AI consultancy.`;
 
-async function extractContentWithAI(item: KnowledgeItem, googleApiKey: string): Promise<ProcessedContent> {
+// ============= CONTENT FETCHING FUNCTIONS =============
+
+/**
+ * Fetch content from a regular URL using Jina Reader
+ */
+async function fetchUrlContent(url: string): Promise<string | null> {
+  console.log(`Fetching URL content via Jina Reader: ${url}`);
+  
+  try {
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const response = await fetch(jinaUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/plain',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Jina Reader error for ${url}: ${response.status}`);
+      return null;
+    }
+
+    const content = await response.text();
+    
+    if (!content || content.length < 100) {
+      console.warn(`Jina Reader returned minimal content for ${url}`);
+      return null;
+    }
+
+    console.log(`Successfully fetched ${content.length} chars from ${url}`);
+    return content;
+  } catch (error) {
+    console.error(`Failed to fetch URL content: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Extract file ID from Google Drive URL
+ */
+function extractGoogleDriveFileId(driveUrl: string): string | null {
+  // Patterns for Google Drive URLs:
+  // https://drive.google.com/file/d/FILE_ID/view
+  // https://drive.google.com/open?id=FILE_ID
+  // https://docs.google.com/document/d/FILE_ID/edit
+  
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /\/document\/d\/([a-zA-Z0-9_-]+)/,
+    /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/,
+    /\/presentation\/d\/([a-zA-Z0-9_-]+)/,
+    /[?&]id=([a-zA-Z0-9_-]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = driveUrl.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fetch PDF content from Google Drive and extract text using Gemini Vision
+ */
+async function fetchGoogleDrivePdfContent(
+  driveUrl: string,
+  fileId: string | null,
+  googleApiKey: string
+): Promise<string | null> {
+  console.log(`Fetching Google Drive PDF content: ${driveUrl}`);
+  
+  const extractedFileId = fileId || extractGoogleDriveFileId(driveUrl);
+  
+  if (!extractedFileId) {
+    console.error(`Could not extract file ID from: ${driveUrl}`);
+    return null;
+  }
+
+  try {
+    // Try Jina Reader first - it supports Google Drive URLs
+    const jinaUrl = `https://r.jina.ai/${driveUrl}`;
+    const jinaResponse = await fetch(jinaUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/plain',
+      },
+    });
+
+    if (jinaResponse.ok) {
+      const content = await jinaResponse.text();
+      if (content && content.length > 200) {
+        console.log(`Jina Reader successfully extracted ${content.length} chars from Google Drive`);
+        return content;
+      }
+    }
+
+    // Fallback: Use direct Google Drive export URL with Gemini vision
+    console.log(`Jina failed, trying Gemini vision for PDF analysis...`);
+    
+    // Get direct download URL for PDF
+    const directUrl = `https://drive.google.com/uc?export=download&id=${extractedFileId}`;
+    
+    // Use Gemini to analyze the PDF via URL
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                text: `Please extract and summarize all the text content from this PDF document. Provide the full text extraction including:
+- Main headings and sections
+- Key statistics and data points
+- Important quotes and findings
+- Author information if present
+- Any methodology mentioned
+
+Document URL: ${directUrl}
+Google Drive URL: ${driveUrl}
+
+Extract as much text content as possible for analysis.`
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 8000,
+          },
+        }),
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error(`Gemini PDF extraction failed: ${geminiResponse.status} - ${errorText}`);
+      return null;
+    }
+
+    const geminiData = await geminiResponse.json();
+    const extractedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (extractedText && extractedText.length > 100) {
+      console.log(`Gemini extracted ${extractedText.length} chars from PDF`);
+      return extractedText;
+    }
+
+    console.warn(`Could not extract meaningful content from Google Drive PDF`);
+    return null;
+  } catch (error) {
+    console.error(`Failed to fetch Google Drive PDF content: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Determine content source and fetch content if needed
+ */
+async function ensureContentAvailable(
+  item: KnowledgeItem,
+  googleApiKey: string
+): Promise<{ content: string | null; contentSource: string }> {
+  // Skip YouTube videos - they're handled separately
+  if (item.content_type === 'Video' || item.url?.includes('youtube.com') || item.url?.includes('youtu.be')) {
+    console.log(`Skipping content fetch for video: ${item.id}`);
+    return { content: item.content, contentSource: 'video' };
+  }
+
+  // If content already exists and is substantial, use it
+  if (item.content && item.content.length > 500) {
+    console.log(`Using existing content (${item.content.length} chars) for: ${item.id}`);
+    return { content: item.content, contentSource: 'existing' };
+  }
+
+  // Try Google Drive URL first (for PDFs)
+  if (item.google_drive_url) {
+    console.log(`Attempting Google Drive content fetch for: ${item.id}`);
+    const driveContent = await fetchGoogleDrivePdfContent(
+      item.google_drive_url,
+      item.google_drive_id,
+      googleApiKey
+    );
+    
+    if (driveContent && driveContent.length > 200) {
+      return { content: driveContent, contentSource: 'google_drive' };
+    }
+  }
+
+  // Try regular URL via Jina Reader
+  if (item.url) {
+    console.log(`Attempting URL content fetch for: ${item.id}`);
+    const urlContent = await fetchUrlContent(item.url);
+    
+    if (urlContent && urlContent.length > 200) {
+      return { content: urlContent, contentSource: 'url' };
+    }
+  }
+
+  // Fallback to whatever we have
+  console.warn(`Could not fetch content for ${item.id}, using fallback`);
+  return { content: item.content || item.summary || item.title, contentSource: 'fallback' };
+}
+
+// ============= AI EXTRACTION =============
+
+async function extractContentWithAI(
+  item: KnowledgeItem, 
+  content: string,
+  googleApiKey: string
+): Promise<ProcessedContent> {
   // Clean content: remove base64 data, very long URLs, and truncate
-  const rawContent = item.content || item.summary || item.title || '';
-  const cleanedContent = rawContent
+  const cleanedContent = content
     .replace(/data:[^;]+;base64,[A-Za-z0-9+/=]+/g, '[base64 data removed]')
     .replace(/https?:\/\/[^\s]{200,}/g, '[long URL removed]')
-    .substring(0, 12000); // Increased to capture more content for richer analysis
+    .substring(0, 15000); // Increased limit for richer analysis
   
   const prompt = `Analyze this content:
 
 Title: ${item.title}
-URL: ${item.url || 'N/A'}
+URL: ${item.url || item.google_drive_url || 'N/A'}
 
 Content:
 ${cleanedContent || 'No content available'}`;
   
-  // Estimate token count and warn if still large
   const estimatedTokens = prompt.length / 4;
   if (estimatedTokens > 50000) {
     console.warn(`Large content detected (~${Math.round(estimatedTokens)} tokens), may be truncated by API`);
@@ -101,7 +314,7 @@ ${cleanedContent || 'No content available'}`;
           contents: [{ parts: [{ text: `${CONTENT_EXTRACTION_PROMPT}\n\n${prompt}` }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 4000, // Increased for richer extraction
+            maxOutputTokens: 4000,
             responseMimeType: 'application/json',
           },
         }),
@@ -143,7 +356,6 @@ ${cleanedContent || 'No content available'}`;
       industries: Array.isArray(parsed.industries) ? parsed.industries : [],
       technologies: Array.isArray(parsed.technologies) ? parsed.technologies : [],
       service_lines: Array.isArray(parsed.service_lines) ? parsed.service_lines : [],
-      // Restored fields with validation
       methodology: parsed.methodology || null,
       dain_relevance: validRelevance.includes(parsed.dain_relevance) ? parsed.dain_relevance : 'Medium',
       source_credibility: validCredibility.includes(parsed.source_credibility) ? parsed.source_credibility : 'Tier 2',
@@ -155,9 +367,8 @@ ${cleanedContent || 'No content available'}`;
     };
   } catch (error) {
     console.error(`AI extraction failed for ${item.id}:`, error);
-    // Return minimal fallback with valid values
     return {
-      summary: item.summary || `Content from: ${item.title}`,
+      summary: `Content from: ${item.title}`,
       key_insights: [],
       dain_context: 'Pending detailed analysis.',
       quotables: [],
@@ -176,6 +387,8 @@ ${cleanedContent || 'No content available'}`;
     };
   }
 }
+
+// ============= MAIN HANDLER =============
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -196,10 +409,10 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch pending items
+    // Fetch pending items - NOW including google_drive_url and google_drive_id
     const { data: pendingItems, error: fetchError } = await supabase
       .from('knowledge_items')
-      .select('id, title, url, content, summary, user_id')
+      .select('id, title, url, google_drive_url, google_drive_id, content, summary, user_id, content_type')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(BATCH_SIZE);
@@ -221,17 +434,41 @@ serve(async (req) => {
     let succeeded = 0;
     let failed = 0;
     const errors: string[] = [];
+    const contentSources: Record<string, number> = {};
 
     // Process each item
     for (const item of pendingItems) {
       const itemStart = Date.now();
       console.log(`\nProcessing: ${item.id} - "${item.title?.substring(0, 50)}..."`);
+      console.log(`  URL: ${item.url || 'none'}`);
+      console.log(`  Google Drive: ${item.google_drive_url || 'none'}`);
+      console.log(`  Existing content: ${item.content ? `${item.content.length} chars` : 'none'}`);
 
       try {
-        // Extract content with AI
-        const processed = await extractContentWithAI(item, googleApiKey);
+        // Step 1: Ensure we have content (fetch if needed)
+        const { content, contentSource } = await ensureContentAvailable(item, googleApiKey);
+        console.log(`  Content source: ${contentSource} (${content?.length || 0} chars)`);
+        
+        contentSources[contentSource] = (contentSources[contentSource] || 0) + 1;
 
-        // Update the item with all fields including restored ones
+        // Step 2: Store fetched content in database if we fetched new content
+        if (content && contentSource !== 'existing' && contentSource !== 'fallback') {
+          const { error: contentUpdateError } = await supabase
+            .from('knowledge_items')
+            .update({ content: content.substring(0, 50000) }) // Store up to 50k chars
+            .eq('id', item.id);
+          
+          if (contentUpdateError) {
+            console.warn(`  Failed to store fetched content: ${contentUpdateError.message}`);
+          } else {
+            console.log(`  Stored fetched content in database`);
+          }
+        }
+
+        // Step 3: Extract structured data with AI
+        const processed = await extractContentWithAI(item, content || item.title, googleApiKey);
+
+        // Step 4: Update the item with all fields
         const { error: updateError } = await supabase
           .from('knowledge_items')
           .update({
@@ -243,7 +480,6 @@ serve(async (req) => {
             industries: processed.industries,
             technologies: processed.technologies,
             service_lines: processed.service_lines,
-            // Restored fields
             methodology: processed.methodology,
             dain_relevance: processed.dain_relevance,
             source_credibility: processed.source_credibility,
@@ -252,7 +488,6 @@ serve(async (req) => {
             business_functions: processed.business_functions,
             author: processed.author,
             author_organization: processed.author_organization,
-            // Status and timestamp
             status: 'pool',
             processed_at: new Date().toISOString(),
           })
@@ -274,6 +509,7 @@ serve(async (req) => {
 
     const duration = Date.now() - startTime;
     console.log(`\nProcessing complete: ${succeeded} succeeded, ${failed} failed`);
+    console.log(`Content sources: ${JSON.stringify(contentSources)}`);
     console.log(`Total duration: ${duration}ms`);
     console.log(`=== PROCESS-CONTENT END ===\n`);
 
@@ -282,6 +518,7 @@ serve(async (req) => {
         message: 'Processing complete',
         processed: succeeded,
         failed,
+        content_sources: contentSources,
         errors: errors.length > 0 ? errors : undefined,
         duration_ms: duration,
       }),
