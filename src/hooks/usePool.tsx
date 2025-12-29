@@ -16,6 +16,7 @@ export interface PoolItem {
   google_drive_url: string | null;
   summary: string | null;
   user_notes: string | null;
+  curator_notes: string | null;
   dain_context: string | null;
   dain_relevance: string | null;
   content_type: string | null;
@@ -24,6 +25,8 @@ export interface PoolItem {
   service_lines: string[] | null;
   business_functions: string[] | null;
   quotables: string[] | null;
+  highlighted_quotes: number[] | null;
+  highlighted_findings: number[] | null;
   source_credibility: string | null;
   actionability: string | null;
   timeliness: string | null;
@@ -32,6 +35,13 @@ export interface PoolItem {
   methodology: string | null;
   infographic_url: string | null;
   created_at: string;
+}
+
+export interface PoolItemUpdate {
+  title?: string;
+  curator_notes?: string;
+  highlighted_quotes?: number[];
+  highlighted_findings?: number[];
 }
 
 export type PoolAction = 'trash' | 'post2team' | 'post2linkedin' | 'post2newsletter' | 'knowledge';
@@ -74,7 +84,7 @@ export function usePool() {
     queryFn: async (): Promise<PoolItem[]> => {
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, url, google_drive_url, summary, user_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, source_credibility, actionability, timeliness, author, author_organization, methodology, infographic_url, created_at')
+        .select('id, title, url, google_drive_url, summary, user_notes, curator_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, highlighted_quotes, highlighted_findings, source_credibility, actionability, timeliness, author, author_organization, methodology, infographic_url, created_at')
         .eq('status', 'pool')
         .order('created_at', { ascending: false });
 
@@ -83,24 +93,21 @@ export function usePool() {
     },
   });
 
-  // Legacy single action mutation (kept for backwards compatibility)
-  const curateItem = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: PoolAction }) => {
+  // Update pool item (for inline editing)
+  const updatePoolItem = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: PoolItemUpdate }) => {
       const { error } = await supabase
         .from('knowledge_items')
-        .update({
-          status,
-          curated_at: new Date().toISOString(),
-        })
+        .update(updates)
         .eq('id', id);
 
       if (error) throw error;
     },
-    onMutate: async ({ id }) => {
+    onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: ['pool-items'] });
       const previousItems = queryClient.getQueryData<PoolItem[]>(['pool-items']);
       queryClient.setQueryData<PoolItem[]>(['pool-items'], (old) =>
-        old?.filter((item) => item.id !== id) ?? []
+        old?.map((item) => (item.id === id ? { ...item, ...updates } : item)) ?? []
       );
       return { previousItems };
     },
@@ -108,9 +115,6 @@ export function usePool() {
       if (context?.previousItems) {
         queryClient.setQueryData(['pool-items'], context.previousItems);
       }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge-stats'] });
     },
   });
 
@@ -146,8 +150,8 @@ export function usePool() {
     items: query.data ?? [],
     isLoading: query.isLoading,
     error: query.error,
-    curateItem: curateItem.mutate,
-    isCurating: curateItem.isPending,
+    updatePoolItem: updatePoolItem.mutate,
+    isUpdating: updatePoolItem.isPending,
     processAction: processAction.mutate,
     isProcessing: processAction.isPending,
   };

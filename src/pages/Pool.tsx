@@ -17,13 +17,13 @@ import {
   Check
 } from 'lucide-react';
 import { Header, MobileNav, FormattedText } from '@/components/common';
-import { TeamPostModal } from '@/components/pool';
+import { TeamPostModal, EditableTitle, HighlightableQuote, NotesEditor } from '@/components/pool';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { usePool, PoolAction, PostOption } from '@/hooks/usePool';
+import { usePool, PoolAction, PostOption, PoolItemUpdate } from '@/hooks/usePool';
 import { cn } from '@/lib/utils';
 
 type SelectableAction = 'trash' | 'post2team' | 'post2linkedin' | 'post2newsletter' | 'knowledge';
@@ -191,7 +191,7 @@ function parseSummaryBullets(summary: string): string[] | null {
 }
 
 export default function Pool() {
-  const { items, isLoading, processAction, isProcessing } = usePool();
+  const { items, isLoading, processAction, isProcessing, updatePoolItem, isUpdating } = usePool();
   const { toast } = useToast();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -352,10 +352,16 @@ export default function Pool() {
               <CardContent className="p-0">
                 {/* Header Section */}
                 <div className="p-5 border-b border-border/50">
-                  {/* Title */}
-                  <h2 className="text-xl font-bold text-foreground leading-tight mb-1">
-                    {currentItem.title}
-                  </h2>
+                  {/* Editable Title */}
+                  <EditableTitle
+                    title={currentItem.title}
+                    onSave={(newTitle) => {
+                      updatePoolItem({ id: currentItem.id, updates: { title: newTitle } });
+                      toast({ description: 'Title updated' });
+                    }}
+                    isLoading={isUpdating}
+                    className="mb-1"
+                  />
                   
                   {/* Author/Organization line */}
                   {(currentItem.author || currentItem.author_organization) && (
@@ -469,21 +475,30 @@ export default function Pool() {
                   </div>
                 )}
 
-                {/* Quotables Section */}
+                {/* Quotables Section with Highlighting */}
                 {currentItem.quotables && currentItem.quotables.length > 0 && (
                   <div className="p-5 border-b border-border/50">
                     <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                       <Quote className="h-4 w-4 text-muted-foreground" />
                       Key Quotes
+                      <span className="text-xs font-normal text-muted-foreground">(click ⭐ to highlight)</span>
                     </h3>
-                    <div className="space-y-3">
-                      {currentItem.quotables.slice(0, 3).map((quote, i) => (
-                        <blockquote 
-                          key={i} 
-                          className="pl-4 border-l-2 border-muted-foreground/30 text-sm text-foreground/80 italic"
-                        >
-                          &ldquo;{quote}&rdquo;
-                        </blockquote>
+                    <div className="space-y-2">
+                      {currentItem.quotables.slice(0, 5).map((quote, i) => (
+                        <HighlightableQuote
+                          key={i}
+                          quote={quote}
+                          index={i}
+                          isHighlighted={currentItem.highlighted_quotes?.includes(i) ?? false}
+                          onToggle={(index) => {
+                            const current = currentItem.highlighted_quotes || [];
+                            const updated = current.includes(index)
+                              ? current.filter((idx) => idx !== index)
+                              : [...current, index];
+                            updatePoolItem({ id: currentItem.id, updates: { highlighted_quotes: updated } });
+                          }}
+                          disabled={isUpdating}
+                        />
                       ))}
                     </div>
                   </div>
@@ -515,6 +530,16 @@ export default function Pool() {
                   <MetadataItem label="Timeliness" value={currentItem.timeliness} />
                   <MetadataItem label="Relevance" value={currentItem.dain_relevance} />
                 </div>
+
+                {/* Curator Notes Section */}
+                <NotesEditor
+                  notes={currentItem.curator_notes}
+                  onSave={(notes) => {
+                    updatePoolItem({ id: currentItem.id, updates: { curator_notes: notes } });
+                    toast({ description: notes ? 'Note saved' : 'Note removed' });
+                  }}
+                  isLoading={isUpdating}
+                />
 
                 {/* Action Selection - Desktop */}
                 <div className="hidden md:block p-4 border-t border-border/50 bg-background space-y-4">

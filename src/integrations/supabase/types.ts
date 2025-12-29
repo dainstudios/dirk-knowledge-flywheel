@@ -143,6 +143,7 @@ export type Database = {
           context_string: string | null
           created_at: string
           curated_at: string | null
+          curator_notes: string | null
           dain_context: string | null
           dain_relevance: string | null
           embedding: string | null
@@ -150,6 +151,8 @@ export type Database = {
           fts: unknown
           google_drive_id: string | null
           google_drive_url: string | null
+          highlighted_findings: number[] | null
+          highlighted_quotes: number[] | null
           id: string
           industries: string[] | null
           infographic_generated_at: string | null
@@ -200,6 +203,7 @@ export type Database = {
           context_string?: string | null
           created_at?: string
           curated_at?: string | null
+          curator_notes?: string | null
           dain_context?: string | null
           dain_relevance?: string | null
           embedding?: string | null
@@ -207,6 +211,8 @@ export type Database = {
           fts?: unknown
           google_drive_id?: string | null
           google_drive_url?: string | null
+          highlighted_findings?: number[] | null
+          highlighted_quotes?: number[] | null
           id?: string
           industries?: string[] | null
           infographic_generated_at?: string | null
@@ -257,6 +263,7 @@ export type Database = {
           context_string?: string | null
           created_at?: string
           curated_at?: string | null
+          curator_notes?: string | null
           dain_context?: string | null
           dain_relevance?: string | null
           embedding?: string | null
@@ -264,6 +271,8 @@ export type Database = {
           fts?: unknown
           google_drive_id?: string | null
           google_drive_url?: string | null
+          highlighted_findings?: number[] | null
+          highlighted_quotes?: number[] | null
           id?: string
           industries?: string[] | null
           infographic_generated_at?: string | null
