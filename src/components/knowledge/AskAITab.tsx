@@ -17,9 +17,9 @@ import {
   CheckCircle,
   RefreshCw,
   ExternalLink,
-  BookOpen,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 interface AskSource {
   id: string;
@@ -82,31 +82,17 @@ export function AskAITab() {
     const sourceElement = document.getElementById(`source-${sourceNum}`);
     if (sourceElement) {
       sourceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      sourceElement.classList.add('bg-primary/20');
-      setTimeout(() => sourceElement.classList.remove('bg-primary/20'), 2000);
+      sourceElement.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+      setTimeout(() => sourceElement.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'), 2000);
     }
   };
 
-  // Parse citations [1], [2] etc and render as clickable superscripts
-  const renderTextWithCitations = (text: string) => {
-    const parts = text.split(/(\[\d+\])/g);
-    return parts.map((part, i) => {
-      const match = part.match(/^\[(\d+)\]$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        return (
-          <button
-            key={i}
-            onClick={() => scrollToSource(num)}
-            className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 ml-0.5 text-[10px] font-semibold bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors align-super"
-            title={`Jump to source ${num}`}
-          >
-            {num}
-          </button>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
+  // Pre-process citations [1], [2] into HTML that rehype-raw can parse
+  const preprocessCitations = (text: string): string => {
+    return text.replace(
+      /\[(\d+)\]/g,
+      '<cite data-num="$1">$1</cite>'
+    );
   };
 
   const modeInfo = {
@@ -216,90 +202,95 @@ export function AskAITab() {
 
         {/* Response */}
         {response && !isAsking && (
-          <div className="space-y-4">
-            {/* Answer Card */}
-            <Card className="overflow-hidden border-l-4 border-l-primary">
-              <div className="p-4 bg-primary/5 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-foreground text-sm">AI Answer</h3>
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="prose prose-sm max-w-none text-foreground">
+          <div className="space-y-6">
+            {/* Answer Card - Clean minimal design */}
+            <Card className="bg-muted/30 border-0 shadow-sm">
+              <div className="p-6 md:p-8">
+                <div className="prose prose-neutral max-w-none 
+                  prose-p:text-foreground prose-p:leading-relaxed prose-p:mb-4
+                  prose-strong:text-foreground prose-strong:font-semibold
+                  prose-em:italic
+                  prose-headings:text-foreground prose-headings:font-semibold
+                  prose-h1:text-xl prose-h1:mt-6 prose-h1:mb-3
+                  prose-h2:text-lg prose-h2:mt-5 prose-h2:mb-3
+                  prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2
+                  prose-ul:my-3 prose-ul:pl-0
+                  prose-ol:my-3 prose-ol:pl-5
+                  prose-li:text-foreground prose-li:my-1
+                ">
                   <ReactMarkdown
+                    rehypePlugins={[rehypeRaw]}
                     components={{
+                      // Handle our custom citation elements
+                      cite: ({ node, ...props }) => {
+                        const num = props['data-num'] as string;
+                        if (num) {
+                          return (
+                            <button
+                              onClick={() => scrollToSource(Number(num))}
+                              className="inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 mx-0.5 text-[10px] font-medium bg-primary text-primary-foreground rounded-full hover:bg-primary/80 transition-colors cursor-pointer align-super -translate-y-0.5"
+                              title={`Jump to source ${num}`}
+                            >
+                              {num}
+                            </button>
+                          );
+                        }
+                        return <cite {...props} />;
+                      },
                       p: ({ children }) => (
-                        <p className="mb-3 leading-relaxed last:mb-0">
-                          {typeof children === 'string' 
-                            ? renderTextWithCitations(children)
-                            : children}
-                        </p>
+                        <p className="mb-4 leading-relaxed last:mb-0">{children}</p>
                       ),
                       strong: ({ children }) => (
-                        <strong className="font-semibold text-foreground">{children}</strong>
-                      ),
-                      em: ({ children }) => (
-                        <em className="italic">{children}</em>
-                      ),
-                      h1: ({ children }) => (
-                        <h1 className="text-lg font-semibold mt-4 mb-2 text-foreground">{children}</h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className="text-base font-semibold mt-4 mb-2 text-foreground">{children}</h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-sm font-semibold mt-3 mb-2 text-foreground">{children}</h3>
+                        <strong className="font-semibold">{children}</strong>
                       ),
                       ul: ({ children }) => (
-                        <ul className="my-2 ml-4 space-y-1">{children}</ul>
+                        <ul className="my-3 space-y-2">{children}</ul>
                       ),
                       ol: ({ children }) => (
-                        <ol className="my-2 ml-4 space-y-1 list-decimal">{children}</ol>
+                        <ol className="my-3 space-y-2 list-decimal list-inside">{children}</ol>
                       ),
                       li: ({ children }) => (
-                        <li className="flex items-start gap-2">
-                          <span className="text-primary mt-1.5 text-xs">•</span>
-                          <span className="flex-1">
-                            {typeof children === 'string' 
-                              ? renderTextWithCitations(children)
-                              : children}
-                          </span>
+                        <li className="flex items-start gap-2 text-foreground">
+                          <span className="text-primary mt-1 flex-shrink-0">•</span>
+                          <span className="flex-1">{children}</span>
                         </li>
                       ),
                     }}
                   >
-                    {response.answer}
+                    {preprocessCitations(response.answer)}
                   </ReactMarkdown>
                 </div>
               </div>
             </Card>
 
-            {/* References Section */}
+            {/* References Section - Clean minimal design */}
             {response.sources.length > 0 && (
-              <div ref={sourcesRef} className="space-y-3">
+              <div ref={sourcesRef} className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-sm font-medium text-foreground">References</h4>
-                    <span className="text-xs text-muted-foreground">
-                      ({response.sources.length} sources)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <CheckCircle className="h-3 w-3 text-success" />
-                    <span>= Full content indexed</span>
-                  </div>
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                    References
+                  </h4>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-help">
+                        <CheckCircle className="h-3 w-3 text-success" />
+                        <span>Full content indexed</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="max-w-[220px]">
+                      <p className="text-xs">Sources with this icon were processed with complete text, providing higher quality context for answers.</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 
-                <Card className="divide-y divide-border">
+                <div className="space-y-2">
                   {response.sources.map((source, idx) => (
                     <div 
                       key={source.id} 
                       id={`source-${idx + 1}`}
-                      className="flex items-center gap-3 p-3 transition-colors duration-300"
+                      className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border/50 transition-all duration-300"
                     >
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
                         {idx + 1}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -308,31 +299,24 @@ export function AskAITab() {
                             href={source.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-foreground hover:text-primary underline underline-offset-2 truncate flex items-center gap-1"
+                            className="text-sm text-foreground hover:text-primary transition-colors truncate flex items-center gap-1.5 group"
                           >
                             <span className="truncate">{source.title}</span>
-                            <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
+                            <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </a>
                         ) : (
                           <span className="text-sm text-foreground truncate block">{source.title}</span>
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground flex-shrink-0 tabular-nums">
-                        {Math.round(source.similarity * 100)}% match
+                        {Math.round(source.similarity * 100)}%
                       </span>
                       {source.has_full_content && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <CheckCircle className="h-4 w-4 text-success flex-shrink-0 cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="max-w-[200px]">
-                            <p className="text-xs">Full content indexed — this source was processed with complete text, providing higher quality context for answers.</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
                       )}
                     </div>
                   ))}
-                </Card>
+                </div>
               </div>
             )}
           </div>
