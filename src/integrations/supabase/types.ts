@@ -352,6 +352,48 @@ export type Database = {
         }
         Relationships: []
       }
+      processing_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          failed_items: number
+          id: string
+          job_type: string
+          processed_items: number
+          started_at: string | null
+          status: string
+          total_items: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          failed_items?: number
+          id?: string
+          job_type: string
+          processed_items?: number
+          started_at?: string | null
+          status?: string
+          total_items?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          failed_items?: number
+          id?: string
+          job_type?: string
+          processed_items?: number
+          started_at?: string | null
+          status?: string
+          total_items?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

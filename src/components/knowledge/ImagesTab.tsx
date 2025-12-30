@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useProcessingJob } from '@/hooks/useProcessingJob';
 
 interface ImageResult {
   id: string;
@@ -345,14 +347,13 @@ export function ImagesTab() {
   const [selectedImage, setSelectedImage] = useState<ImageResult | null>(null);
   
   // Admin state for processing
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processResult, setProcessResult] = useState<{
-    processed: number;
-    failed: number;
-  } | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [unprocessedCount, setUnprocessedCount] = useState<number | null>(null);
+  
+  // Use the processing job hook for progress tracking
+  const { job, isRunning, isCompleted, isFailed, progress } = useProcessingJob(currentJobId);
 
-  // Fetch unprocessed count on mount
+  // Fetch unprocessed count on mount and after job completes
   useEffect(() => {
     const fetchUnprocessedCount = async () => {
       const { count, error } = await supabase
@@ -366,35 +367,37 @@ export function ImagesTab() {
       }
     };
     fetchUnprocessedCount();
-  }, [processResult]);
+  }, [isCompleted]);
 
-  const handleProcessImages = async () => {
-    setIsProcessing(true);
-    setProcessResult(null);
-    
+  // Show toast when job completes
+  useEffect(() => {
+    if (isCompleted && job) {
+      toast.success(`Processed ${job.processed_items} images${job.failed_items > 0 ? `, ${job.failed_items} failed` : ''}`);
+      setCurrentJobId(null);
+    } else if (isFailed && job) {
+      toast.error(`Processing failed: ${job.error_message || 'Unknown error'}`);
+      setCurrentJobId(null);
+    }
+  }, [isCompleted, isFailed, job]);
+
+  const handleProcessAllImages = async () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('process-image', {
-        body: { batch: true, limit: 5 }
+        body: { process_all: true }
       });
 
       if (fnError) throw new Error(fnError.message);
       if (data?.error) throw new Error(data.error);
 
-      setProcessResult({
-        processed: data.processed || 0,
-        failed: data.failed || 0
-      });
-
-      if (data.processed > 0) {
-        toast.success(`Processed ${data.processed} images successfully`);
-      } else {
+      if (data?.job_id) {
+        setCurrentJobId(data.job_id);
+        toast.info(`Processing ${data.total} images in the background...`);
+      } else if (data?.total === 0) {
         toast.info('No images to process');
       }
     } catch (err) {
-      console.error('Process images error:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to process images');
-    } finally {
-      setIsProcessing(false);
+      console.error('Process all images error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to start processing');
     }
   };
 
@@ -442,50 +445,46 @@ export function ImagesTab() {
 
   return (
     <div className="space-y-6">
-      {/* Helper text */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Search charts, graphs, and infographics from your visual library
-        </p>
-        
-        {/* Admin: Process Images Button */}
-        {unprocessedCount !== null && unprocessedCount > 0 && (
-          <div className="flex items-center gap-3">
-            {processResult && (
-              <div className="flex items-center gap-2 text-sm">
-                {processResult.processed > 0 && (
-                  <span className="flex items-center gap-1 text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    {processResult.processed} processed
-                  </span>
-                )}
-                {processResult.failed > 0 && (
-                  <span className="flex items-center gap-1 text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    {processResult.failed} failed
-                  </span>
-                )}
-              </div>
-            )}
+      {/* Header with helper text and process button */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Search charts, graphs, and infographics from your visual library
+          </p>
+          
+          {/* Admin: Process All Images Button */}
+          {unprocessedCount !== null && unprocessedCount > 0 && !isRunning && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleProcessImages}
-              disabled={isProcessing}
+              onClick={handleProcessAllImages}
               className="gap-2"
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="h-4 w-4" />
-                  Process {Math.min(unprocessedCount, 5)} of {unprocessedCount}
-                </>
-              )}
+              <Wand2 className="h-4 w-4" />
+              Process All {unprocessedCount} Images
             </Button>
+          )}
+        </div>
+
+        {/* Progress bar when processing */}
+        {isRunning && job && (
+          <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="font-medium">Processing images...</span>
+              </div>
+              <span className="text-muted-foreground">
+                {job.processed_items} of {job.total_items} ({progress}%)
+              </span>
+            </div>
+            <Progress value={progress} className="h-2" />
+            {job.failed_items > 0 && (
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {job.failed_items} failed
+              </p>
+            )}
           </div>
         )}
       </div>
