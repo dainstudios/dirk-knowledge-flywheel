@@ -47,19 +47,30 @@ const VALID_CONTENT_TYPES = [
   'Case Study', 'How-To / Guide', 'Tool/Product', 'Field Guide', 'Video'
 ];
 
-const CONTENT_EXTRACTION_PROMPT = `You are an expert content analyst for DAIN Studios, a data & AI consultancy. Analyze the provided content and extract comprehensive structured information.
+const CONTENT_EXTRACTION_PROMPT = `You are an expert content analyst for DAIN Studios, a data & AI consultancy. Analyze the provided content and extract structured information optimized for team sharing.
+
+CRITICAL FORMATTING RULES:
+1. summary: ONE punchy sentence (max 50 words) capturing the single most important insight. Be specific with numbers/data, not generic.
+2. key_insights: EXACTLY 5 findings, each MUST follow this format: "**[2-3 word label]:** [specific insight with numbers/percentages/metrics]"
+3. methodology: Start with author/organization name, then methodology. Example: "Ethan Mollick at Wharton analyzed 1,500 knowledge workers across North America, March-June 2024."
 
 Return a JSON object with these fields:
 {
-  "summary": "A 2-3 sentence executive summary of the content (max 200 words). Be specific about the main findings, not generic.",
-  "key_insights": ["Array of 3-5 key insights or takeaways from the content. Each should be a complete, actionable insight."],
+  "summary": "ONE sentence (max 50 words) with the key insight. Include specific numbers/percentages. Example: 'AI coding assistants boost developer productivity by 55% but require 6-week adoption period before benefits materialize.'",
+  "key_insights": [
+    "**[Label]:** [specific insight with data/metrics]",
+    "**[Label]:** [specific finding with percentages]",
+    "**[Label]:** [actionable insight with numbers]",
+    "**[Label]:** [key takeaway with data]",
+    "**[Label]:** [notable finding with metrics]"
+  ],
   "dain_context": "How this content is relevant to DAIN Studios' work in data strategy, AI implementation, analytics, or digital transformation (2-3 sentences with specific applications)",
   "quotables": ["Array of 2-4 notable quotes or statistics from the content that could be cited. Include specific numbers, percentages, or impactful statements."],
   "content_type": "MUST be exactly one of: Research Report, Industry Analysis, Thought Piece, News, Case Study, How-To / Guide, Tool/Product, Field Guide, Video",
   "industries": ["Array of relevant industries mentioned or applicable, e.g., Healthcare, Finance, Retail, Manufacturing, Energy, Technology"],
   "technologies": ["Array of technologies mentioned, e.g., Machine Learning, GenAI, LLM, Data Analytics, Cloud, IoT, Computer Vision"],
   "service_lines": ["Array of DAIN service lines this relates to: Data Strategy, AI Implementation, Analytics, Digital Transformation, Data Governance"],
-  "methodology": "Research approach and methods used in the content (e.g., 'Survey of 500 executives', 'Case study analysis', 'Literature review'). Return null if not applicable or not mentioned.",
+  "methodology": "Start with author/org name, then research approach. Example: 'McKinsey Global Institute surveyed 1,800 C-suite executives across 14 industries, Q1 2024.' Return null if author/methodology not found.",
   "dain_relevance": "Rate overall relevance to DAIN's work. MUST be exactly one of: High, Medium, Low",
   "source_credibility": "Rate source credibility. MUST be exactly one of: Tier 1 (academic/major research institution/top consulting firm), Tier 2 (industry publication/established company), Tier 3 (blog/opinion piece/unknown source)",
   "actionability": "How actionable is this content? MUST be exactly one of: Direct Use (can apply immediately), Strategic Context (informs strategy), Reference Only (background knowledge)",
@@ -69,7 +80,10 @@ Return a JSON object with these fields:
   "author_organization": "Author's organization/institution/company if mentioned. Return null if not found."
 }
 
-Be thorough and specific. Extract real quotes and statistics when available. Focus on business and technology insights relevant to a data & AI consultancy.`;
+STRICT REQUIREMENTS:
+- key_insights MUST have exactly 5 items, each starting with **Label:** format
+- Extract surprising, non-obvious insights with real numbers - avoid generic observations
+- summary must be ONE sentence with specific data, not a generic description`;
 
 // ============= CONTENT FETCHING FUNCTIONS =============
 
