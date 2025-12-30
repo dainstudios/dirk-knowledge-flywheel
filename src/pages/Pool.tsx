@@ -14,9 +14,10 @@ import {
   Quote,
   FileText,
   FlaskConical,
-  Check
+  Check,
+  Lightbulb
 } from 'lucide-react';
-import { Header, MobileNav, FormattedText } from '@/components/common';
+import { Header, MobileNav, FormattedText, EditableTextArea } from '@/components/common';
 import { TeamPostModal, EditableTitle, HighlightableQuote, NotesEditor } from '@/components/pool';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -405,69 +406,23 @@ export default function Pool() {
                   </div>
                 </div>
 
-                {/* Summary Section */}
-                <div className="p-6 border-b border-grey-200">
-                  {currentItem.summary ? (
-                    (() => {
-                      const bullets = parseSummaryBullets(currentItem.summary);
-                      if (bullets) {
-                        return (
-                          <ul className="space-y-2 text-foreground/90">
-                            {bullets.map((bullet, i) => (
-                              <li key={i} className="flex items-start gap-2 leading-relaxed">
-                                <span className="text-grey-400 mt-1.5 text-xs">•</span>
-                                <FormattedText content={bullet} as="span" />
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      }
-                      return (
-                        <FormattedText 
-                          content={currentItem.summary} 
-                          className="text-foreground/90 leading-relaxed"
-                        />
-                      );
-                    })()
-                  ) : (
-                    <p className="text-muted-foreground italic">
-                      Processing... Summary will appear once ready.
-                    </p>
-                  )}
-                </div>
-
-                {/* Study Methodology Section (for Research Reports) */}
-                {currentItem.methodology && (
-                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
-                    <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                      <FlaskConical className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
-                      Study Methodology
+                {/* Key Findings Section */}
+                {currentItem.key_insights && currentItem.key_insights.length > 0 && (
+                  <div className="p-6 border-b border-grey-200">
+                    <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
+                      Key Findings
                     </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {currentItem.methodology}
-                    </p>
-                  </div>
-                )}
-
-                {/* User Notes */}
-                {currentItem.user_notes && (
-                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
-                    <p className="text-sm text-muted-foreground italic">
-                      Your note: &ldquo;{currentItem.user_notes}&rdquo;
-                    </p>
-                  </div>
-                )}
-
-                {/* DAIN Context Section */}
-                {currentItem.dain_context && (
-                  <div className="p-6 border-b border-grey-200 bg-primary/5 border-l-4 border-l-primary">
-                    <h3 className="text-sm font-medium text-primary mb-2">
-                      Why it matters for DAIN
-                    </h3>
-                    <FormattedText 
-                      content={currentItem.dain_context} 
-                      className="text-sm text-foreground/80 leading-relaxed"
-                    />
+                    <div className="space-y-2">
+                      {currentItem.key_insights.slice(0, 5).map((insight, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center mt-0.5">
+                            {i + 1}
+                          </span>
+                          <FormattedText content={insight} as="span" className="text-foreground/90 leading-relaxed" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -499,6 +454,36 @@ export default function Pool() {
                     </div>
                   </div>
                 )}
+
+                {/* Study Methodology Section */}
+                {currentItem.methodology && (
+                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
+                    <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                      <FlaskConical className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
+                      Study Methodology
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {currentItem.methodology}
+                    </p>
+                  </div>
+                )}
+
+                {/* DAIN Context Section - Editable */}
+                <div className="p-6 border-b border-grey-200 bg-primary/5 border-l-4 border-l-primary">
+                  <h3 className="text-sm font-medium text-primary mb-2">
+                    Why it matters for DAIN
+                  </h3>
+                  <EditableTextArea
+                    value={currentItem.dain_context || ''}
+                    placeholder="Add context about why this matters for DAIN..."
+                    onSave={(newContext) => {
+                      updatePoolItem({ id: currentItem.id, updates: { dain_context: newContext } });
+                      toast({ description: 'DAIN context updated' });
+                    }}
+                    isLoading={isUpdating}
+                    className="text-sm text-foreground/80"
+                  />
+                </div>
 
                 {/* Tags Section */}
                 {hasTags && (
