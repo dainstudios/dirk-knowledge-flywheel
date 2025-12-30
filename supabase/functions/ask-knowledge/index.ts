@@ -131,11 +131,15 @@ serve(async (req) => {
       });
     }
 
-    // 4. Build context for AI
+    // 4. Build context for AI with numbered source mapping
     let contextParts: string[] = [];
+    let sourceMapping: string[] = [];
     
-    for (const source of sourcesWithContent) {
-      let sourceContext = `### ${source.title}\n`;
+    sourcesWithContent.forEach((source, index) => {
+      const sourceNum = index + 1;
+      sourceMapping.push(`[${sourceNum}] = "${source.title}"`);
+      
+      let sourceContext = `### [${sourceNum}] ${source.title}\n`;
       sourceContext += `Relevance: ${Math.round(source.similarity * 100)}%\n\n`;
       
       if (source.dain_context) {
@@ -161,9 +165,10 @@ serve(async (req) => {
       }
       
       contextParts.push(sourceContext);
-    }
+    });
 
     const context = contextParts.join('\n---\n\n');
+    const sourceMappingText = sourceMapping.join('\n');
 
     // 5. Generate answer using Claude
     console.log('Generating answer with Claude...');
@@ -173,10 +178,14 @@ serve(async (req) => {
 Your task is to answer questions based ONLY on the provided knowledge base context. Follow these rules:
 1. Only use information from the provided context - do not make up information
 2. If the context doesn't contain relevant information, say so honestly
-3. Cite which sources you're drawing from when possible
+3. **IMPORTANT: Use numbered citations like [1], [2], [3] when referencing information from sources.** Place the citation immediately after the relevant statement.
 4. Be concise but thorough
 5. Use bullet points for clarity when listing multiple items
 6. If asked about specific topics, synthesize information across multiple sources when relevant
+7. Format your response with proper markdown: use **bold** for emphasis, bullet points for lists
+
+Source Number Mapping:
+${sourceMappingText}
 
 The user is asking about content in their curated knowledge base for professional consulting work.`;
 
@@ -192,7 +201,7 @@ ${context || 'No relevant sources found in the knowledge base.'}
 
 ---
 
-Please provide a helpful, accurate answer based on the context above.`;
+Please provide a helpful, accurate answer based on the context above. Remember to cite sources using [1], [2], etc.`;
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
