@@ -7,3 +7,4 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { FormattedText } from './FormattedText';
 export { AccessDenied } from './AccessDenied';
 export { ProfileDropdown } from './ProfileDropdown';
+export { EditableTextArea } from './EditableTextArea';
