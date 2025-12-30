@@ -477,6 +477,15 @@ serve(async (req) => {
   console.log(`\n=== PROCESS-CONTENT START ===`);
 
   try {
+    // Parse request body for optional parameters
+    let reprocess = false;
+    try {
+      const body = await req.json();
+      reprocess = body?.reprocess === true;
+    } catch {
+      // No body or invalid JSON - use defaults
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
@@ -486,6 +495,26 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // If reprocess=true, reset all pool items to pending first
+    if (reprocess) {
+      console.log('REPROCESS MODE: Resetting pool items to pending...');
+      const { data: resetItems, error: resetError } = await supabase
+        .from('knowledge_items')
+        .update({
+          status: 'pending',
+          summary: null,
+          key_insights: null,
+          processed_at: null,
+        })
+        .eq('status', 'pool')
+        .select('id');
+
+      if (resetError) {
+        throw new Error(`Failed to reset pool items: ${resetError.message}`);
+      }
+      console.log(`Reset ${resetItems?.length || 0} pool items to pending`);
+    }
 
     // Fetch pending items - NOW including google_drive_url and google_drive_id
     const { data: pendingItems, error: fetchError } = await supabase
