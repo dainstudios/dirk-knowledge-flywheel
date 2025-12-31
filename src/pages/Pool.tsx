@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, parseISO } from 'date-fns';
 import { 
   Trash2, 
   Users, 
@@ -13,9 +13,10 @@ import {
   Loader2,
   Quote,
   FileText,
-  FlaskConical,
+  Info,
   Check,
-  Lightbulb
+  Lightbulb,
+  Calendar
 } from 'lucide-react';
 import { Header, MobileNav, FormattedText, EditableTextArea } from '@/components/common';
 import { TeamPostModal, EditableTitle, HighlightableQuote, NotesEditor } from '@/components/pool';
@@ -23,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { usePool, PoolAction, PostOption, PoolItemUpdate } from '@/hooks/usePool';
 import { cn } from '@/lib/utils';
@@ -118,7 +120,14 @@ function EmptyState() {
   );
 }
 
-// Credibility tier badge with muted colors
+// Tier explanations for tooltips
+const tierExplanations: Record<string, string> = {
+  'Tier 1': 'Highly credible: Academic journals, major publications, or industry leaders',
+  'Tier 2': 'Credible: Established organizations or known experts',
+  'Tier 3': 'General: Blogs, social media, or unverified sources',
+};
+
+// Credibility tier badge with tooltip
 function CredibilityBadge({ tier }: { tier: string | null }) {
   if (!tier) return null;
   
@@ -133,10 +142,21 @@ function CredibilityBadge({ tier }: { tier: string | null }) {
     label = 'Tier 3';
   }
   
+  const explanation = tierExplanations[label] || tier;
+  
   return (
-    <Badge variant="outline">
-      {label}
-    </Badge>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="outline" className="cursor-help">
+            {label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-xs text-sm">{explanation}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -150,8 +170,18 @@ function ContentTypeBadge({ type }: { type: string | null }) {
   );
 }
 
-// Tag badge component with muted colors
-function TagBadge({ label, category }: { label: string; category: 'industry' | 'technology' | 'service' | 'function' }) {
+// Editable tag badge component
+function EditableTagBadge({ 
+  label, 
+  category, 
+  isActive, 
+  onToggle 
+}: { 
+  label: string; 
+  category: 'industry' | 'technology' | 'service' | 'function';
+  isActive: boolean;
+  onToggle: () => void;
+}) {
   const colorMap = {
     industry: 'bg-grey-100 text-grey-500 border-grey-200',
     technology: 'bg-grey-100 text-grey-500 border-grey-200',
@@ -160,7 +190,14 @@ function TagBadge({ label, category }: { label: string; category: 'industry' | '
   };
   
   return (
-    <Badge variant="outline" className={`${colorMap[category]} text-xs font-medium`}>
+    <Badge 
+      variant="outline" 
+      className={cn(
+        `${colorMap[category]} text-xs font-medium cursor-pointer transition-all`,
+        !isActive && 'opacity-40 line-through'
+      )}
+      onClick={onToggle}
+    >
       {label}
     </Badge>
   );
@@ -363,9 +400,10 @@ export default function Pool() {
                   {/* Author/Organization line */}
                   {(currentItem.author || currentItem.author_organization) && (
                     <p className="text-sm text-muted-foreground mb-3">
-                      By {currentItem.author && currentItem.author_organization
-                        ? `${currentItem.author} • ${currentItem.author_organization}`
-                        : currentItem.author_organization || currentItem.author}
+                      By {currentItem.author}
+                      {currentItem.author_organization && (
+                        <span className="font-medium text-foreground"> • {currentItem.author_organization}</span>
+                      )}
                     </p>
                   )}
                   
@@ -403,8 +441,27 @@ export default function Pool() {
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(currentItem.created_at), { addSuffix: true })}
                     </span>
+                    {currentItem.publication_date && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        Published {format(parseISO(currentItem.publication_date), 'MMM d, yyyy')}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {/* Context Section (formerly Methodology) - MOVED UP */}
+                {currentItem.methodology && (
+                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
+                    <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                      <Info className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
+                      Context
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {currentItem.methodology}
+                    </p>
+                  </div>
+                )}
 
                 {/* Key Findings Section */}
                 {currentItem.key_insights && currentItem.key_insights.length > 0 && (
@@ -432,7 +489,7 @@ export default function Pool() {
                     <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                       <Quote className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
                       Key Quotes
-                      <span className="text-xs font-normal text-muted-foreground">(click ⭐ to highlight)</span>
+                      <span className="text-xs font-normal text-muted-foreground">(⭐ on left to highlight)</span>
                     </h3>
                     <div className="space-y-2">
                       {currentItem.quotables.slice(0, 5).map((quote, i) => (
@@ -455,19 +512,6 @@ export default function Pool() {
                   </div>
                 )}
 
-                {/* Study Methodology Section */}
-                {currentItem.methodology && (
-                  <div className="px-6 py-4 border-b border-grey-200 bg-grey-50">
-                    <h3 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                      <FlaskConical className="h-4 w-4 text-grey-400" strokeWidth={1.5} />
-                      Study Methodology
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {currentItem.methodology}
-                    </p>
-                  </div>
-                )}
-
                 {/* DAIN Context Section - Editable */}
                 <div className="p-6 border-b border-grey-200 bg-primary/5 border-l-4 border-l-primary">
                   <h3 className="text-sm font-medium text-primary mb-2">
@@ -485,32 +529,64 @@ export default function Pool() {
                   />
                 </div>
 
-                {/* Tags Section */}
+                {/* Tags Section - Editable */}
                 {hasTags && (
                   <div className="p-6 border-b border-grey-200">
+                    <h3 className="text-xs font-medium text-muted-foreground mb-2">
+                      Tags <span className="font-normal">(click to toggle)</span>
+                    </h3>
                     <div className="flex flex-wrap gap-2">
-                      {currentItem.industries?.slice(0, 4).map((tag) => (
-                        <TagBadge key={`ind-${tag}`} label={tag} category="industry" />
+                      {currentItem.industries?.map((tag) => (
+                        <EditableTagBadge 
+                          key={`ind-${tag}`} 
+                          label={tag} 
+                          category="industry" 
+                          isActive={true}
+                          onToggle={() => {
+                            const updated = currentItem.industries?.filter(t => t !== tag) || [];
+                            updatePoolItem({ id: currentItem.id, updates: { industries: updated } });
+                          }}
+                        />
                       ))}
-                      {currentItem.technologies?.slice(0, 4).map((tag) => (
-                        <TagBadge key={`tech-${tag}`} label={tag} category="technology" />
+                      {currentItem.technologies?.map((tag) => (
+                        <EditableTagBadge 
+                          key={`tech-${tag}`} 
+                          label={tag} 
+                          category="technology"
+                          isActive={true}
+                          onToggle={() => {
+                            const updated = currentItem.technologies?.filter(t => t !== tag) || [];
+                            updatePoolItem({ id: currentItem.id, updates: { technologies: updated } });
+                          }}
+                        />
                       ))}
-                      {currentItem.service_lines?.slice(0, 4).map((tag) => (
-                        <TagBadge key={`svc-${tag}`} label={tag} category="service" />
+                      {currentItem.service_lines?.map((tag) => (
+                        <EditableTagBadge 
+                          key={`svc-${tag}`} 
+                          label={tag} 
+                          category="service"
+                          isActive={true}
+                          onToggle={() => {
+                            const updated = currentItem.service_lines?.filter(t => t !== tag) || [];
+                            updatePoolItem({ id: currentItem.id, updates: { service_lines: updated } });
+                          }}
+                        />
                       ))}
-                      {currentItem.business_functions?.slice(0, 4).map((tag) => (
-                        <TagBadge key={`func-${tag}`} label={tag} category="function" />
+                      {currentItem.business_functions?.map((tag) => (
+                        <EditableTagBadge 
+                          key={`func-${tag}`} 
+                          label={tag} 
+                          category="function"
+                          isActive={true}
+                          onToggle={() => {
+                            const updated = currentItem.business_functions?.filter(t => t !== tag) || [];
+                            updatePoolItem({ id: currentItem.id, updates: { business_functions: updated } });
+                          }}
+                        />
                       ))}
                     </div>
                   </div>
                 )}
-
-                {/* Metadata Footer */}
-                <div className="px-6 py-3 bg-grey-50 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <MetadataItem label="Actionability" value={currentItem.actionability} />
-                  <MetadataItem label="Timeliness" value={currentItem.timeliness} />
-                  <MetadataItem label="Relevance" value={currentItem.dain_relevance} />
-                </div>
 
                 {/* Curator Notes Section */}
                 <NotesEditor

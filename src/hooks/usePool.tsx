@@ -35,6 +35,7 @@ export interface PoolItem {
   methodology: string | null;
   infographic_url: string | null;
   key_insights: string[] | null;
+  publication_date: string | null;
   created_at: string;
 }
 
@@ -44,6 +45,10 @@ export interface PoolItemUpdate {
   highlighted_quotes?: number[];
   highlighted_findings?: number[];
   dain_context?: string;
+  industries?: string[];
+  technologies?: string[];
+  service_lines?: string[];
+  business_functions?: string[];
 }
 
 export type PoolAction = 'trash' | 'post2team' | 'post2linkedin' | 'post2newsletter' | 'knowledge';
@@ -86,7 +91,7 @@ export function usePool() {
     queryFn: async (): Promise<PoolItem[]> => {
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, url, google_drive_url, summary, user_notes, curator_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, highlighted_quotes, highlighted_findings, source_credibility, actionability, timeliness, author, author_organization, methodology, infographic_url, key_insights, created_at')
+        .select('id, title, url, google_drive_url, summary, user_notes, curator_notes, dain_context, dain_relevance, content_type, industries, technologies, service_lines, business_functions, quotables, highlighted_quotes, highlighted_findings, source_credibility, actionability, timeliness, author, author_organization, methodology, infographic_url, key_insights, publication_date, created_at')
         .eq('status', 'pool')
         .order('created_at', { ascending: false });
 
