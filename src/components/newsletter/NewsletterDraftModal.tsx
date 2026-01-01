@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-
+import { supabase } from '@/integrations/supabase/client';
 type ModalState = 'idle' | 'generating' | 'complete' | 'error';
 
 interface NewsletterDraftItem {
@@ -61,75 +61,21 @@ const PROGRESS_MESSAGES = [
   'Formatting for LinkedIn...',
 ];
 
-// Mock function - will be replaced with real Edge Function call
 const generateNewsletterDraft = async (itemIds: string[]): Promise<{
   success: boolean;
   draft?: NewsletterDraft;
   error?: string;
 }> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  const { data, error } = await supabase.functions.invoke('generate-newsletter', {
+    body: { item_ids: itemIds }
+  });
   
-  // Return mock data for testing UI
-  return {
-    success: true,
-    draft: {
-      intro: "This week's signals point to a clear pattern: enterprise AI is moving from pilot to production faster than anyone expected. Here's what you need to know...",
-      items: itemIds.map((id, index) => ({
-        id,
-        title: `Sample Article ${index + 1}`,
-        context: "McKinsey surveyed 1,363 executives across 14 industries globally to assess GenAI adoption and organizational impact.",
-        key_findings: [
-          "65% of organizations now regularly use GenAI (up from 33% in 2023)",
-          "Cost reduction and revenue gains reported by 25%+ of users",
-          "Top use cases: marketing content (43%), software dev (40%)"
-        ],
-        dain_take: "The 2x jump in 10 months tells us the early-mover window is closing. Clients still 'exploring' AI are now officially behind.",
-        source_url: "https://example.com"
-      })),
-      closing: "What trend are you watching most closely? Let me know in the comments.",
-      markdown: `🎯 **THIS EDITION**
-
-This week's signals point to a clear pattern: enterprise AI is moving from pilot to production faster than anyone expected. Here's what you need to know...
-
----
-
-**📊 Article 1: Sample Article 1**
-
-**Context:** McKinsey surveyed 1,363 executives across 14 industries globally to assess GenAI adoption and organizational impact.
-
-**Key Findings:**
-• 65% of organizations now regularly use GenAI (up from 33% in 2023)
-• Cost reduction and revenue gains reported by 25%+ of users
-• Top use cases: marketing content (43%), software dev (40%)
-
-**🎤 DAIN Take:** The 2x jump in 10 months tells us the early-mover window is closing. Clients still 'exploring' AI are now officially behind.
-
----
-
-What trend are you watching most closely? Let me know in the comments.`,
-      plain_text: `🎯 THIS EDITION
-
-This week's signals point to a clear pattern: enterprise AI is moving from pilot to production faster than anyone expected. Here's what you need to know...
-
----
-
-📊 Article 1: Sample Article 1
-
-Context: McKinsey surveyed 1,363 executives across 14 industries globally to assess GenAI adoption and organizational impact.
-
-Key Findings:
-• 65% of organizations now regularly use GenAI (up from 33% in 2023)
-• Cost reduction and revenue gains reported by 25%+ of users
-• Top use cases: marketing content (43%), software dev (40%)
-
-🎤 DAIN Take: The 2x jump in 10 months tells us the early-mover window is closing. Clients still 'exploring' AI are now officially behind.
-
----
-
-What trend are you watching most closely? Let me know in the comments.`
-    }
-  };
+  if (error) {
+    console.error('Newsletter generation error:', error);
+    return { success: false, error: error.message };
+  }
+  
+  return data;
 };
 
 export function NewsletterDraftModal({
