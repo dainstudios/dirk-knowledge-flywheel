@@ -16,16 +16,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
 import { useNewsletterQueue } from '@/hooks/useNewsletterQueue';
-import { NewsletterQueueCard } from '@/components/newsletter/NewsletterQueueCard';
+import { NewsletterQueueCard, NewsletterDraftModal } from '@/components/newsletter';
 
 export default function Newsletter() {
   const { items, isLoading, removeFromQueue, updateNotes } = useNewsletterQueue();
-  const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<string | null>(null);
+  const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
 
   // Initialize selection with all items
   useEffect(() => {
@@ -77,10 +76,19 @@ export default function Newsletter() {
   };
 
   const handleGenerateDraft = () => {
-    toast({
-      description: 'Newsletter generation coming soon',
-    });
+    setIsDraftModalOpen(true);
   };
+
+  // Get selected items data for the draft modal
+  const selectedItemsForDraft = items
+    .filter(item => selectedIds.has(item.id))
+    .map(item => ({
+      id: item.id,
+      title: item.title,
+      author_organization: item.author_organization,
+      author: item.author,
+      content_type: item.content_type,
+    }));
 
   const allSelected = items.length > 0 && selectedIds.size === items.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < items.length;
@@ -190,6 +198,13 @@ export default function Newsletter() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Newsletter Draft Generation Modal */}
+      <NewsletterDraftModal
+        isOpen={isDraftModalOpen}
+        onClose={() => setIsDraftModalOpen(false)}
+        selectedItems={selectedItemsForDraft}
+      />
     </div>
   );
 }
