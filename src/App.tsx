@@ -11,6 +11,7 @@ import Capture from "./pages/Capture";
 import Pool from "./pages/Pool";
 import Knowledge from "./pages/Knowledge";
 import KnowledgeItemDetail from "./pages/KnowledgeItemDetail";
+import Newsletter from "./pages/Newsletter";
 import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
 
@@ -68,6 +69,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole="contributor">
                     <Pool />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter"
+                element={
+                  <ProtectedRoute requiredRole="contributor">
+                    <Newsletter />
                   </ProtectedRoute>
                 }
               />

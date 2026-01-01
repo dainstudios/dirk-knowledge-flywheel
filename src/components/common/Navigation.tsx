@@ -1,13 +1,16 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, PlusCircle, Layers, BookOpen } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Layers, BookOpen, Newspaper } from 'lucide-react';
 import { useRoles, type AppRole } from '@/hooks/useRoles';
+import { useNewsletterQueueCount } from '@/hooks/useNewsletterQueue';
+import { Badge } from '@/components/ui/badge';
 
 interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   minRole?: AppRole;
+  showBadge?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -15,10 +18,12 @@ const navItems: NavItem[] = [
   { to: '/capture', label: 'Capture', icon: PlusCircle, minRole: 'contributor' },
   { to: '/pool', label: 'Pool', icon: Layers, minRole: 'contributor' },
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
+  { to: '/newsletter', label: 'Newsletter', icon: Newspaper, minRole: 'contributor', showBadge: true },
 ];
 
 export function Navigation() {
   const { hasRole, roleLoading } = useRoles();
+  const newsletterCount = useNewsletterQueueCount();
 
   if (roleLoading) {
     return <nav className="hidden md:flex items-center gap-1" />;
@@ -46,6 +51,11 @@ export function Navigation() {
         >
           <item.icon className="h-4 w-4" />
           {item.label}
+          {item.showBadge && newsletterCount > 0 && (
+            <Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
+              {newsletterCount}
+            </Badge>
+          )}
         </NavLink>
       ))}
     </nav>
