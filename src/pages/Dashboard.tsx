@@ -102,24 +102,26 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card variant="slate">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <FeatureIcon icon={Database} size="lg" variant="default" />
-                  <div className="flex-1">
-                    <p className="heading-card text-muted-foreground mb-2">
-                      Knowledge Base
-                    </p>
-                    <div>
-                      <span className="text-3xl font-semibold text-foreground">{stats?.knowledge_count ?? 0}</span>
+            <Link to="/knowledge" className="group">
+              <Card variant="slate" className="h-full hover:shadow-elevated transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <FeatureIcon icon={Database} size="lg" variant="default" />
+                    <div className="flex-1">
+                      <p className="heading-card text-muted-foreground mb-2">
+                        Knowledge Base
+                      </p>
+                      <div>
+                        <span className="text-3xl font-semibold text-foreground">{stats?.knowledge_count ?? 0}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Total items stored
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Total items stored
-                    </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         )}
 
@@ -137,6 +139,13 @@ export default function Dashboard() {
               <Link to="/pool" className="flex items-center">
                 <Layers className="h-5 w-5 mr-2" />
                 Review Pool
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+            <Button asChild variant="accent" size="lg">
+              <Link to="/knowledge" className="flex items-center">
+                <Database className="h-5 w-5 mr-2" />
+                Access Knowledge Base
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
