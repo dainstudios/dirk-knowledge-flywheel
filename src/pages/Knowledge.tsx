@@ -61,7 +61,7 @@ export default function Knowledge() {
           </TabsList>
 
           <TabsContent value="ask">
-            <AskAITab />
+            <AskAITab totalItems={items.length} />
           </TabsContent>
 
           <TabsContent value="search">

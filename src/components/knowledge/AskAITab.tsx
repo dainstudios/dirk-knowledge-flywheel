@@ -17,6 +17,7 @@ import {
   CheckCircle,
   RefreshCw,
   ExternalLink,
+  Info,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -40,7 +41,11 @@ interface AskResponse {
 
 type AskMode = 'standard' | 'deep';
 
-export function AskAITab() {
+interface AskAITabProps {
+  totalItems?: number;
+}
+
+export function AskAITab({ totalItems }: AskAITabProps) {
   const [mode, setMode] = useState<AskMode>('standard');
   const [query, setQuery] = useState('');
   const [isAsking, setIsAsking] = useState(false);
@@ -98,12 +103,12 @@ export function AskAITab() {
   const modeInfo = {
     standard: {
       label: 'Standard',
-      description: 'Gets answers from your top 7 most relevant sources',
+      description: 'Gets answers from your top 3 most relevant sources',
       icon: MessageSquare,
     },
     deep: {
       label: 'Deep Search',
-      description: 'Analyzes 30+ documents for complex research questions',
+      description: 'Analyzes up to 30 documents for complex research questions',
       icon: Zap,
     },
   };
@@ -113,22 +118,32 @@ export function AskAITab() {
       <div className="space-y-6">
         {/* Mode selector */}
         <div className="space-y-3">
-          <div className="flex gap-2">
-            {(['standard', 'deep'] as const).map((m) => {
-              const Icon = modeInfo[m].icon;
-              return (
-                <Button
-                  key={m}
-                  variant={mode === m ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setMode(m)}
-                  className="gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {modeInfo[m].label}
-                </Button>
-              );
-            })}
+          <div className="flex items-center gap-3">
+            <div className="flex gap-2">
+              {(['standard', 'deep'] as const).map((m) => {
+                const Icon = modeInfo[m].icon;
+                return (
+                  <Button
+                    key={m}
+                    variant={mode === m ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setMode(m)}
+                    className="gap-2"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {modeInfo[m].label}
+                  </Button>
+                );
+              })}
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[280px] text-sm">
+                <p>Your question is matched against {totalItems ? `all ${totalItems}` : 'all'} knowledge items using semantic search. The most relevant documents are then used to generate your answer with citations.</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
           <p className="text-sm text-muted-foreground">
             {modeInfo[mode].description}
