@@ -162,6 +162,9 @@ export type Database = {
           key_findings: string[] | null
           key_insights: string[] | null
           methodology: string | null
+          newsletter_edition_id: string | null
+          newsletter_included_at: string | null
+          newsletter_take: string | null
           pdf_data: string | null
           pdf_filename: string | null
           pdf_storage_path: string | null
@@ -222,6 +225,9 @@ export type Database = {
           key_findings?: string[] | null
           key_insights?: string[] | null
           methodology?: string | null
+          newsletter_edition_id?: string | null
+          newsletter_included_at?: string | null
+          newsletter_take?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
           pdf_storage_path?: string | null
@@ -282,6 +288,9 @@ export type Database = {
           key_findings?: string[] | null
           key_insights?: string[] | null
           methodology?: string | null
+          newsletter_edition_id?: string | null
+          newsletter_included_at?: string | null
+          newsletter_take?: string | null
           pdf_data?: string | null
           pdf_filename?: string | null
           pdf_storage_path?: string | null
