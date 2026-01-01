@@ -17,7 +17,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNewsletterQueue } from '@/hooks/useNewsletterQueue';
-import { NewsletterQueueCard, NewsletterDraftModal } from '@/components/newsletter';
+import { NewsletterQueueCard, NewsletterDraftModal, NewsletterItemSheet } from '@/components/newsletter';
 
 export default function Newsletter() {
   const { items, isLoading, removeFromQueue, updateNotes } = useNewsletterQueue();
@@ -25,6 +25,7 @@ export default function Newsletter() {
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<string | null>(null);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
 
   // Initialize selection with all items
   useEffect(() => {
@@ -78,6 +79,23 @@ export default function Newsletter() {
   const handleGenerateDraft = () => {
     setIsDraftModalOpen(true);
   };
+
+  const handleOpenDetail = (id: string) => {
+    setSelectedDetailId(id);
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedDetailId(null);
+  };
+
+  const handleSaveDetailNotes = (notes: string) => {
+    if (selectedDetailId) {
+      updateNotes.mutate({ itemId: selectedDetailId, notes });
+      setSelectedDetailId(null);
+    }
+  };
+
+  const selectedDetailItem = items.find(item => item.id === selectedDetailId) || null;
 
   // Get selected items data for the draft modal
   const selectedItemsForDraft = items
@@ -171,6 +189,7 @@ export default function Newsletter() {
                   onToggleSelect={handleToggleSelect}
                   onRemove={handleRemoveClick}
                   onUpdateNotes={handleUpdateNotes}
+                  onOpenDetail={handleOpenDetail}
                   isUpdating={updateNotes.isPending}
                 />
               ))}
@@ -204,6 +223,15 @@ export default function Newsletter() {
         isOpen={isDraftModalOpen}
         onClose={() => setIsDraftModalOpen(false)}
         selectedItems={selectedItemsForDraft}
+      />
+
+      {/* Article Detail Sheet */}
+      <NewsletterItemSheet
+        item={selectedDetailItem}
+        isOpen={selectedDetailId !== null}
+        onClose={handleCloseDetail}
+        onSaveNotes={handleSaveDetailNotes}
+        isUpdating={updateNotes.isPending}
       />
     </div>
   );

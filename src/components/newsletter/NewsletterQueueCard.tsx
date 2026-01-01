@@ -15,6 +15,7 @@ interface NewsletterQueueCardProps {
   onToggleSelect: (id: string) => void;
   onRemove: (id: string) => void;
   onUpdateNotes: (id: string, notes: string) => void;
+  onOpenDetail: (id: string) => void;
   isUpdating?: boolean;
 }
 
@@ -24,6 +25,7 @@ export function NewsletterQueueCard({
   onToggleSelect,
   onRemove,
   onUpdateNotes,
+  onOpenDetail,
   isUpdating,
 }: NewsletterQueueCardProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -65,10 +67,13 @@ export function NewsletterQueueCard({
 
           {/* Content */}
           <div className="flex-1 min-w-0 space-y-2">
-            {/* Title */}
-            <h3 className="font-semibold text-foreground line-clamp-2">
+            {/* Title - clickable */}
+            <button
+              onClick={() => onOpenDetail(item.id)}
+              className="text-left font-semibold text-foreground line-clamp-2 hover:underline hover:text-primary transition-colors"
+            >
               {item.title}
-            </h3>
+            </button>
 
             {/* Source line */}
             <p className="text-sm text-muted-foreground">

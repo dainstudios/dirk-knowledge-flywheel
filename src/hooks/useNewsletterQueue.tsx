@@ -12,6 +12,12 @@ export interface NewsletterQueueItem {
   curator_notes: string | null;
   queued_for_newsletter_at: string | null;
   url: string | null;
+  summary: string | null;
+  key_findings: string[] | null;
+  quotables: string[] | null;
+  dain_context: string | null;
+  highlighted_quotes: number[] | null;
+  user_notes: string | null;
 }
 
 export function useNewsletterQueue() {
@@ -30,7 +36,7 @@ export function useNewsletterQueue() {
 
       const { data, error } = await supabase
         .from('knowledge_items')
-        .select('id, title, author, author_organization, content_type, curator_notes, queued_for_newsletter_at, url')
+        .select('id, title, author, author_organization, content_type, curator_notes, queued_for_newsletter_at, url, summary, key_findings, quotables, dain_context, highlighted_quotes, user_notes')
         .eq('user_id', user.id)
         .eq('queued_for_newsletter', true)
         .order('queued_for_newsletter_at', { ascending: false });
