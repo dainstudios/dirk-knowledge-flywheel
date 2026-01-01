@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Header, MobileNav, FormattedText, EditableTextArea } from '@/components/common';
 import { TeamPostModal, EditableTitle, HighlightableQuote, NotesEditor } from '@/components/pool';
+import { NewsletterNoteModal } from '@/components/newsletter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -231,6 +232,7 @@ export default function Pool() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedActions, setSelectedActions] = useState<Set<SelectableAction>>(new Set());
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isNewsletterModalOpen, setIsNewsletterModalOpen] = useState(false);
 
   const currentItem = items[currentIndex];
   const totalItems = items.length;
@@ -272,11 +274,61 @@ export default function Pool() {
     );
   };
 
+  // Handle Newsletter button click - opens modal for adding note
+  const handleNewsletterClick = () => {
+    if (!currentItem || isProcessing) return;
+    setIsNewsletterModalOpen(true);
+  };
+
+  // Handle Newsletter confirm from modal
+  const handleNewsletterConfirm = async (note: string) => {
+    if (!currentItem) return;
+
+    setIsNewsletterModalOpen(false);
+    setExitingId(currentItem.id);
+
+    // First update curator_notes if note was provided
+    if (note.trim()) {
+      updatePoolItem({ 
+        id: currentItem.id, 
+        updates: { curator_notes: note.trim() } 
+      });
+    }
+
+    // Then process the newsletter action
+    processAction(
+      { 
+        item_id: currentItem.id, 
+        actions: { newsletter: true, trash: false, team: false, linkedin: false, keep: false }
+      },
+      {
+        onSuccess: () => {
+          toast({ description: 'Added to Newsletter Queue!' });
+          setExitingId(null);
+          setSelectedActions(new Set());
+          if (currentIndex >= items.length - 1 && currentIndex > 0) {
+            setCurrentIndex(currentIndex - 1);
+          }
+        },
+        onError: (err: Error) => {
+          toast({ description: err.message || 'Failed to queue', variant: 'destructive' });
+          setExitingId(null);
+        },
+      }
+    );
+  };
+
   // Toggle action selection with multi-select logic
   const toggleAction = (action: SelectableAction) => {
     // If clicking Team, handle separately
     if (action === 'post2team') {
       handleTeamClick();
+      return;
+    }
+
+    // If clicking Newsletter, handle separately
+    if (action === 'post2newsletter') {
+      handleNewsletterClick();
       return;
     }
 
@@ -720,6 +772,18 @@ export default function Pool() {
           itemId={currentItem.id}
           itemTitle={currentItem.title}
           existingInfographicUrl={currentItem.infographic_url}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {/* Newsletter Note Modal */}
+      {currentItem && (
+        <NewsletterNoteModal
+          isOpen={isNewsletterModalOpen}
+          onClose={() => setIsNewsletterModalOpen(false)}
+          itemTitle={currentItem.title}
+          existingNote={currentItem.curator_notes}
+          onConfirm={handleNewsletterConfirm}
           isProcessing={isProcessing}
         />
       )}
