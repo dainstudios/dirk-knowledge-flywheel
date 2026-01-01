@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ExternalLink, Star, MessageSquare } from 'lucide-react';
+import { ExternalLink, Star, MessageSquare, Info, Lightbulb, Quote } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FormattedText } from '@/components/common';
 import { cn } from '@/lib/utils';
 import type { NewsletterQueueItem } from '@/hooks/useNewsletterQueue';
 
@@ -53,6 +54,7 @@ export function NewsletterItemSheet({
 
   const sourceLine = item.author_organization || item.author || 'Unknown source';
   const highlightedSet = new Set(item.highlighted_quotes || []);
+  const findings = item.key_insights || item.key_findings || [];
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -64,7 +66,10 @@ export function NewsletterItemSheet({
                 {item.title}
               </SheetTitle>
               <p className="text-sm text-muted-foreground">
-                {sourceLine}
+                By {item.author}
+                {item.author_organization && (
+                  <span className="font-medium text-foreground"> • {item.author_organization}</span>
+                )}
               </p>
             </div>
             {item.url && (
@@ -86,94 +91,97 @@ export function NewsletterItemSheet({
           )}
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-6">
-          <div className="py-4 space-y-5">
-            {/* Summary */}
-            {item.summary && (
-              <section>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-                  Summary
+        <ScrollArea className="flex-1">
+          <div className="divide-y divide-border">
+            {/* Context Section (formerly Methodology) */}
+            {item.methodology && (
+              <div className="px-6 py-4 bg-muted/30">
+                <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                  Context
                 </h4>
-                <p className="text-sm text-foreground leading-relaxed">
-                  {item.summary}
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {item.methodology}
                 </p>
-              </section>
+              </div>
             )}
 
-            {/* Key Findings */}
-            {item.key_findings && item.key_findings.length > 0 && (
-              <section>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+            {/* Key Findings Section */}
+            {findings.length > 0 && (
+              <div className="px-6 py-4">
+                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
                   Key Findings
                 </h4>
-                <ul className="space-y-2">
-                  {item.key_findings.map((finding, idx) => (
-                    <li key={idx} className="text-sm text-foreground flex gap-2">
-                      <span className="text-muted-foreground shrink-0">•</span>
-                      <span>{finding}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Key Quotes */}
-            {item.quotables && item.quotables.length > 0 && (
-              <section>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-                  Key Quotes
-                </h4>
                 <div className="space-y-2">
-                  {item.quotables.map((quote, idx) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        'text-sm p-3 rounded-lg border',
-                        highlightedSet.has(idx)
-                          ? 'bg-primary/5 border-primary/20'
-                          : 'bg-muted/30 border-transparent'
-                      )}
-                    >
-                      <div className="flex gap-2">
-                        {highlightedSet.has(idx) && (
-                          <Star className="h-4 w-4 text-primary fill-primary shrink-0 mt-0.5" />
-                        )}
-                        <p className="italic text-foreground">"{quote}"</p>
-                      </div>
+                  {findings.slice(0, 5).map((finding, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <FormattedText content={finding} as="span" className="text-foreground/90 leading-relaxed text-sm" />
                     </div>
                   ))}
                 </div>
-              </section>
+              </div>
             )}
 
-            {/* DAIN Context */}
+            {/* Key Quotes Section */}
+            {item.quotables && item.quotables.length > 0 && (
+              <div className="px-6 py-4">
+                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                  <Quote className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                  Key Quotes
+                </h4>
+                <div className="space-y-2">
+                  {item.quotables.slice(0, 5).map((quote, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        'flex items-start gap-2 p-3 rounded-lg text-sm',
+                        highlightedSet.has(idx)
+                          ? 'bg-primary/5 border border-primary/20'
+                          : 'bg-muted/30'
+                      )}
+                    >
+                      {highlightedSet.has(idx) && (
+                        <Star className="h-4 w-4 text-primary fill-primary shrink-0 mt-0.5" />
+                      )}
+                      <p className="italic text-foreground/90">"{quote}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* DAIN Context Section */}
             {item.dain_context && (
-              <section>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+              <div className="px-6 py-4">
+                <h4 className="text-sm font-medium text-foreground mb-2">
                   DAIN Context
                 </h4>
-                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="p-3 rounded-lg bg-primary/5 border-l-4 border-l-primary">
                   <p className="text-sm text-foreground">{item.dain_context}</p>
                 </div>
-              </section>
+              </div>
             )}
 
-            {/* Original Notes */}
+            {/* Original Capture Notes */}
             {item.user_notes && (
-              <section>
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+              <div className="px-6 py-4">
+                <h4 className="text-sm font-medium text-foreground mb-2">
                   Capture Notes
                 </h4>
                 <div className="flex items-start gap-2 text-sm text-muted-foreground">
                   <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
                   <p className="italic">{item.user_notes}</p>
                 </div>
-              </section>
+              </div>
             )}
 
             {/* Curator Notes (Why it matters) */}
-            <section>
-              <h4 className="text-xs font-medium uppercase tracking-wide text-primary mb-2">
+            <div className="px-6 py-4">
+              <h4 className="text-sm font-medium text-primary mb-2">
                 Why It Matters (Newsletter Note)
               </h4>
               <Textarea
@@ -187,7 +195,7 @@ export function NewsletterItemSheet({
               <p className="text-xs text-muted-foreground mt-1.5">
                 ⌘+Enter to save
               </p>
-            </section>
+            </div>
           </div>
         </ScrollArea>
 
