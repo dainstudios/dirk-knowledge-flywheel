@@ -80,7 +80,7 @@ serve(async (req) => {
 
     console.log(`Found ${items.length} items for newsletter generation`);
 
-    // Build the prompt for Claude
+    // Build the prompt
     const itemsContext = items.map((item, index) => `
 ### Item ${index + 1}: ${item.title}
 - **Source**: ${item.author_organization || item.author || 'Unknown'}
@@ -130,63 +130,85 @@ Remember:
 
 Respond ONLY with the JSON object, no markdown code blocks.`;
 
-    // Call Claude API
-    const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!anthropicApiKey) {
-      console.error('ANTHROPIC_API_KEY not configured');
+    // Call Lovable AI Gateway
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Calling Claude API...');
+    console.log('Calling Lovable AI Gateway...');
 
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
-        'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
+        model: 'google/gemini-2.5-flash',
         messages: [
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        system: systemPrompt,
       }),
     });
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      console.error('Claude API error:', claudeResponse.status, errorText);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('Lovable AI error:', aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again in a moment.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI credits exhausted. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ success: false, error: 'AI generation failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const claudeData = await claudeResponse.json();
-    const generatedText = claudeData.content[0]?.text;
+    const aiData = await aiResponse.json();
+    const generatedText = aiData.choices?.[0]?.message?.content;
 
     if (!generatedText) {
-      console.error('No content in Claude response');
+      console.error('No content in AI response');
       return new Response(
         JSON.stringify({ success: false, error: 'AI returned empty response' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Claude response received, parsing...');
+    console.log('AI response received, parsing...');
 
-    // Parse the JSON response
+    // Parse the JSON response - handle potential markdown code blocks
     let parsedDraft;
     try {
-      parsedDraft = JSON.parse(generatedText);
+      let jsonText = generatedText.trim();
+      // Remove markdown code blocks if present
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.slice(7);
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.slice(3);
+      }
+      if (jsonText.endsWith('```')) {
+        jsonText = jsonText.slice(0, -3);
+      }
+      parsedDraft = JSON.parse(jsonText.trim());
     } catch (parseError) {
-      console.error('Failed to parse Claude response:', parseError, generatedText);
+      console.error('Failed to parse AI response:', parseError, generatedText);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to parse AI response' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
