@@ -499,30 +499,26 @@ Edge functions are automatically deployed when pushing to the repository.
 
 ## Changelog
 
-### v1.3.0 (January 2026)
+### Week 2 - Curation & Newsletter (January 1-2, 2026)
+- **Pool UI Refresh**: Standardized card layout with editable titles, tags, DAIN context
+- **Quote Highlighting**: Star icons for marking key quotes
+- **Visual Sharing Status**: Colored left borders for Team/LinkedIn/Newsletter sharing
+- **Knowledge Base Sync**: Consistent styling between Pool and Knowledge Base views
 - **Newsletter Queue**: Full curation workflow with slide-out detail panel
-- **Newsletter Draft Generation**: AI-powered synthesis of selected items into cohesive newsletter
-- **Curator Notes**: Add "Why It Matters" notes to newsletter items
+- **Newsletter Draft Generation**: AI-powered synthesis using Claude
+- **Curator Notes**: "Why It Matters" notes for newsletter items
 - **Header Navigation**: Logo and title now link to Dashboard
 
-### v1.2.0 (December 2025)
-- **Pool UI Refresh**: Standardized card layout with editable titles, tags, and DAIN context
-- **Quote/Finding Highlighting**: Star icons for marking key quotes and findings
-- **Visual Sharing Status**: Colored left borders indicate Team/LinkedIn/Newsletter status
-- **Knowledge Base Sync**: Consistent styling between Pool and Knowledge Base views
-- **Re-sharing**: Share items again to Team, LinkedIn, or Newsletter from Knowledge Base
-
-### v1.1.0 (November 2025)
+### Week 1 - Project Launch (December 27-31, 2025)
+- **Core Infrastructure**: React + Vite + TypeScript + Tailwind + Supabase setup
+- **iCapture**: URL/text capture with AI processing via Gemini
+- **iCurate (Pool)**: Card-based curation interface with approve/trash/post actions
+- **Knowledge Base**: Search and detail views with semantic search
+- **Authentication**: Role-based access (Admin, Creator, Contributor, Viewer)
+- **Edge Functions**: process-content, process-action, find-quote, ask-knowledge, generate-search-embedding
 - **Infographic Generation**: Quick and Detailed styles with DAIN branding
-- **Team Sharing**: One-click Slack posting with customizable formats
-- **Publishing Queues**: LinkedIn and Newsletter queue management
+- **Team Sharing**: One-click Slack posting
 - **Ask AI**: RAG-based Q&A across knowledge base
-
-### v1.0.0 (October 2025)
-- **Initial Release**: iCapture, iCurate (Pool), Knowledge Base
-- **AI Processing**: Gemini-powered content extraction and embeddings
-- **Semantic Search**: Hybrid full-text and vector search
-- **Role-Based Access**: Admin, Creator, Contributor, Viewer roles
 
 ---
 
