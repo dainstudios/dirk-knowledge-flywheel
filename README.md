@@ -20,6 +20,7 @@ A knowledge management platform that captures, curates, and distributes content 
 - [Environment Variables](#environment-variables)
 - [Design System](#design-system)
 - [Workflow](#workflow)
+- [Changelog](#changelog)
 
 ---
 
@@ -493,6 +494,35 @@ Edge functions are automatically deployed when pushing to the repository.
 - **Card consistency**: Pool, Knowledge Base, and Newsletter use identical card layouts
 - **Visual status indicators**: Colored left borders indicate sharing status
 - **Quote highlighting**: Star icons positioned on the left of quotes/findings
+
+---
+
+## Changelog
+
+### v1.3.0 (January 2026)
+- **Newsletter Queue**: Full curation workflow with slide-out detail panel
+- **Newsletter Draft Generation**: AI-powered synthesis of selected items into cohesive newsletter
+- **Curator Notes**: Add "Why It Matters" notes to newsletter items
+- **Header Navigation**: Logo and title now link to Dashboard
+
+### v1.2.0 (December 2025)
+- **Pool UI Refresh**: Standardized card layout with editable titles, tags, and DAIN context
+- **Quote/Finding Highlighting**: Star icons for marking key quotes and findings
+- **Visual Sharing Status**: Colored left borders indicate Team/LinkedIn/Newsletter status
+- **Knowledge Base Sync**: Consistent styling between Pool and Knowledge Base views
+- **Re-sharing**: Share items again to Team, LinkedIn, or Newsletter from Knowledge Base
+
+### v1.1.0 (November 2025)
+- **Infographic Generation**: Quick and Detailed styles with DAIN branding
+- **Team Sharing**: One-click Slack posting with customizable formats
+- **Publishing Queues**: LinkedIn and Newsletter queue management
+- **Ask AI**: RAG-based Q&A across knowledge base
+
+### v1.0.0 (October 2025)
+- **Initial Release**: iCapture, iCurate (Pool), Knowledge Base
+- **AI Processing**: Gemini-powered content extraction and embeddings
+- **Semantic Search**: Hybrid full-text and vector search
+- **Role-Based Access**: Admin, Creator, Contributor, Viewer roles
 
 ---
 
