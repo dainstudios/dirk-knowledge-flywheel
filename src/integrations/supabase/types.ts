@@ -130,6 +130,74 @@ export type Database = {
           },
         ]
       }
+      import_queue: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          file_size_bytes: number | null
+          filename: string
+          google_drive_file_id: string
+          google_drive_url: string | null
+          id: string
+          import_batch_id: string | null
+          knowledge_item_id: string | null
+          mime_type: string | null
+          retry_count: number | null
+          source_folder_id: string | null
+          source_folder_path: string | null
+          started_at: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          filename: string
+          google_drive_file_id: string
+          google_drive_url?: string | null
+          id?: string
+          import_batch_id?: string | null
+          knowledge_item_id?: string | null
+          mime_type?: string | null
+          retry_count?: number | null
+          source_folder_id?: string | null
+          source_folder_path?: string | null
+          started_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          filename?: string
+          google_drive_file_id?: string
+          google_drive_url?: string | null
+          id?: string
+          import_batch_id?: string | null
+          knowledge_item_id?: string | null
+          mime_type?: string | null
+          retry_count?: number | null
+          source_folder_id?: string | null
+          source_folder_path?: string | null
+          started_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_queue_knowledge_item_id_fkey"
+            columns: ["knowledge_item_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_items: {
         Row: {
           actionability: string | null
@@ -154,6 +222,8 @@ export type Database = {
           highlighted_findings: number[] | null
           highlighted_quotes: number[] | null
           id: string
+          import_queue_id: string | null
+          import_source: string | null
           industries: string[] | null
           infographic_generated_at: string | null
           infographic_style: string | null
@@ -217,6 +287,8 @@ export type Database = {
           highlighted_findings?: number[] | null
           highlighted_quotes?: number[] | null
           id?: string
+          import_queue_id?: string | null
+          import_source?: string | null
           industries?: string[] | null
           infographic_generated_at?: string | null
           infographic_style?: string | null
@@ -280,6 +352,8 @@ export type Database = {
           highlighted_findings?: number[] | null
           highlighted_quotes?: number[] | null
           id?: string
+          import_queue_id?: string | null
+          import_source?: string | null
           industries?: string[] | null
           infographic_generated_at?: string | null
           infographic_style?: string | null
@@ -320,7 +394,15 @@ export type Database = {
           video_speakers?: string[] | null
           video_thumbnail_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_items_import_queue_id_fkey"
+            columns: ["import_queue_id"]
+            isOneToOne: false
+            referencedRelation: "import_queue"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       model_usage_log: {
         Row: {
@@ -512,6 +594,21 @@ export type Database = {
       }
     }
     Views: {
+      import_progress: {
+        Row: {
+          completed: number | null
+          completion_percentage: number | null
+          failed: number | null
+          import_batch_id: string | null
+          last_completed_at: string | null
+          pending: number | null
+          processing: number | null
+          skipped: number | null
+          started_at: string | null
+          total_files: number | null
+        }
+        Relationships: []
+      }
       model_usage_summary: {
         Row: {
           avg_duration_ms: number | null
@@ -538,6 +635,34 @@ export type Database = {
           pool_count: number
           total_items: number
         }[]
+      }
+      get_next_import_batch: {
+        Args: { batch_size?: number }
+        Returns: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          file_size_bytes: number | null
+          filename: string
+          google_drive_file_id: string
+          google_drive_url: string | null
+          id: string
+          import_batch_id: string | null
+          knowledge_item_id: string | null
+          mime_type: string | null
+          retry_count: number | null
+          source_folder_id: string | null
+          source_folder_path: string | null
+          started_at: string | null
+          status: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "import_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_pending_count: { Args: never; Returns: number }
       get_pool_count: { Args: never; Returns: number }

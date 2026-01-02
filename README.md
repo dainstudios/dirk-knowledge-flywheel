@@ -45,16 +45,21 @@ The Knowledge Flywheel is an internal tool for DAIN Studios that enables:
 
 ### 📋 iCurate (Pool)
 - Triage pending items with swipe-style actions
+- Editable titles, tags, and DAIN context inline
+- Quote and finding highlighting (star icons)
 - Add personal notes and context
 - Queue for team sharing, LinkedIn, or newsletter
 - Generate AI-powered infographics
 - Batch processing support
+- Visual sharing status indicators (colored left borders)
 
 ### 📚 Knowledge Base
 - Full-text search with semantic understanding
 - Filter by industry, technology, service line, content type
 - Rich detail view with metadata display
 - AI-extracted key insights and quotables
+- Consistent card styling with Pool view
+- Re-share to Team, LinkedIn, or Newsletter from cards
 
 ### 🤖 AI Features
 | Feature | Description |
@@ -79,6 +84,16 @@ The Knowledge Flywheel is an internal tool for DAIN Studios that enables:
 - LinkedIn queue for social content
 - Newsletter queue for email campaigns
 - Status tracking and timestamps
+
+### 📰 Newsletter Queue
+- Queue items for newsletter inclusion from the Pool
+- Click article titles to view full context in slide-out panel
+- View methodology, key findings, quotes, and DAIN context while curating
+- Add curator notes explaining "why this matters" for each item
+- Select multiple items for current edition
+- AI-powered draft generation synthesizes selected items into cohesive newsletter
+- Markdown and plain text output formats
+- Copy-to-clipboard for easy pasting to newsletter tool
 
 ---
 
@@ -109,7 +124,7 @@ The Knowledge Flywheel is an internal tool for DAIN Studios that enables:
 | Provider | Use Case |
 |----------|----------|
 | Google Gemini | Content extraction, embeddings |
-| Anthropic Claude | Ask AI (RAG Q&A) |
+| Anthropic Claude | Ask AI (RAG Q&A), Newsletter generation |
 | OpenRouter (GPT-4o) | Infographic generation |
 
 ---
@@ -123,6 +138,10 @@ The Knowledge Flywheel is an internal tool for DAIN Studios that enables:
 │  │ Capture  │  │   Pool   │  │Knowledge │  │    Dashboard     │ │
 │  │  Page    │  │   Page   │  │   Page   │  │                  │ │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────────┬─────────┘ │
+│       │             │             │                 │           │
+│  ┌────┴─────────────┴─────────────┴─────────────────┴─────────┐ │
+│  │                      Newsletter Page                        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
 └───────┼─────────────┼─────────────┼─────────────────┼───────────┘
         │             │             │                 │
         ▼             ▼             ▼                 ▼
@@ -134,8 +153,8 @@ The Knowledge Flywheel is an internal tool for DAIN Studios that enables:
 │  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └─────┬─────┘  │
 │         │              │               │               │         │
 │  ┌──────┴──────┐ ┌─────┴─────┐  ┌──────┴──────┐ ┌─────┴─────┐   │
-│  │ find-quote  │ │find-image │  │ post-to-    │ │  hybrid   │   │
-│  │             │ │           │  │   slack     │ │  search   │   │
+│  │ find-quote  │ │find-image │  │ post-to-    │ │  generate │   │
+│  │             │ │           │  │   slack     │ │ newsletter│   │
 │  └─────────────┘ └───────────┘  └─────────────┘ └───────────┘   │
 └─────────────────────────────────────────────────────────────────┘
         │                    │                    │
@@ -176,17 +195,28 @@ The core content repository storing all captured knowledge.
 | `url` | text | Source URL |
 | `content` | text | Full extracted content |
 | `summary` | text | AI-generated summary |
+| `context` | text | Research context/methodology |
+| `key_findings` | text[] | Extracted key findings |
 | `key_insights` | text[] | Extracted key insights |
 | `quotables` | text[] | Notable quotes |
-| `dain_context` | text | DAIN-specific relevance |
+| `dain_context` | text | DAIN-specific relevance (editable) |
+| `curator_notes` | text | Newsletter curator's motivation/notes |
 | `content_type` | text | Article, Video, Report, etc. |
+| `author` | text | Content author |
+| `author_organization` | text | Author's organization |
 | `industries` | text[] | Relevant industries |
 | `technologies` | text[] | Mentioned technologies |
 | `service_lines` | text[] | DAIN service lines |
+| `business_functions` | text[] | Business functions |
 | `status` | text | pending, pool, knowledge, trash |
 | `embedding` | vector(768) | Semantic search vector |
 | `fast_track` | boolean | Priority processing flag |
 | `capture_source` | text | web_ui, extension, api |
+| `highlighted_findings` | int[] | Indices of starred findings |
+| `highlighted_quotes` | int[] | Indices of starred quotes |
+| `shared_to_team` | boolean | Shared to Slack flag |
+| `queued_for_linkedin` | boolean | LinkedIn queue flag |
+| `queued_for_newsletter` | boolean | Newsletter queue flag |
 
 **Status Flow:**
 ```
@@ -260,6 +290,7 @@ Role-based access control (separate table for security).
 | `find-quote` | User search | Semantic search for quotables |
 | `find-image` | User search | Semantic image search by description |
 | `generate-search-embedding` | Search query | Creates embeddings for hybrid search |
+| `generate-newsletter` | User request | Synthesizes queue items into newsletter draft using Claude |
 | `post-to-slack` | ⚠️ DEPRECATED | Use `process-action` instead |
 
 ### Function Details
@@ -308,6 +339,37 @@ Role-based access control (separate table for security).
 }
 ```
 
+#### `generate-newsletter`
+```typescript
+// Input
+{ item_ids: string[] }
+
+// Process
+1. Fetch knowledge items by IDs
+2. Build context with summary, key_findings, quotables, curator_notes
+3. Call Claude to identify themes and synthesize content
+4. Generate thematic intro, per-item sections, and closing hook
+5. Output markdown and plain text formats
+
+// Output
+{
+  success: boolean,
+  draft: {
+    intro: string,
+    items: [{
+      id: string,
+      title: string,
+      context: string,
+      key_findings: string[],
+      dain_take: string
+    }],
+    closing: string,
+    markdown: string,
+    plain_text: string
+  }
+}
+```
+
 ---
 
 ## User Roles
@@ -342,6 +404,7 @@ admin > creator > contributor > viewer
 | `/pool` | Pool | Protected | Curate pending items |
 | `/knowledge` | Knowledge | Protected | Browse knowledge base |
 | `/knowledge/:id` | Detail | Protected | View item details |
+| `/newsletter` | Newsletter | Protected | Curate newsletter queue |
 | `/admin/users` | Admin | Admin only | User management |
 
 ---
@@ -384,7 +447,7 @@ Edge functions are automatically deployed when pushing to the repository.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GOOGLE_API_KEY` | ✅ | Gemini AI for content extraction & embeddings |
-| `ANTHROPIC_API_KEY` | ✅ | Claude AI for Ask Knowledge feature |
+| `ANTHROPIC_API_KEY` | ✅ | Claude AI for Ask Knowledge & Newsletter generation |
 | `OPENROUTER_API_KEY` | ✅ | GPT-4o for infographic generation |
 | `SLACK_WEBHOOK_URL` | ✅ | Slack incoming webhook for team posts |
 | `SUPABASE_URL` | Auto | Supabase project URL |
@@ -425,6 +488,12 @@ Edge functions are automatically deployed when pushing to the repository.
 | `md` | 768px | Tablet |
 | `lg` | 1024px | Desktop |
 
+### UI Patterns
+- **Header navigation**: Logo and "Knowledge Flywheel" text link to Dashboard
+- **Card consistency**: Pool, Knowledge Base, and Newsletter use identical card layouts
+- **Visual status indicators**: Colored left borders indicate sharing status
+- **Quote highlighting**: Star icons positioned on the left of quotes/findings
+
 ---
 
 ## Workflow
@@ -441,7 +510,14 @@ Edge functions are automatically deployed when pushing to the repository.
            ┌─────────────┐            ┌─────────────┐            ┌─────────────┐
            │  KNOWLEDGE  │            │    TEAM     │            │   QUEUES    │
            │    BASE     │            │   (Slack)   │            │ (LI/News)   │
-           └─────────────┘            └─────────────┘            └─────────────┘
+           └─────────────┘            └─────────────┘            └──────┬──────┘
+                                                                        │
+                                                                        ▼
+                                                                ┌─────────────┐
+                                                                │ NEWSLETTER  │
+                                                                │   DRAFT     │
+                                                                │   (AI)      │
+                                                                └─────────────┘
 ```
 
 ### Status Lifecycle
@@ -453,6 +529,15 @@ Edge functions are automatically deployed when pushing to the repository.
 5. **Post2LinkedIn** - Queued for LinkedIn publishing
 6. **Post2Newsletter** - Queued for newsletter inclusion
 7. **Trash** - Discarded
+
+### Newsletter Workflow
+
+1. **Queue** - Item added to newsletter queue from Pool (via "Queue for Newsletter" action)
+2. **Curate** - Click title to view full article details in side panel
+3. **Annotate** - Add curator notes explaining "Why It Matters"
+4. **Select** - Check items to include in current edition
+5. **Generate** - AI synthesizes selected items into cohesive draft
+6. **Export** - Copy markdown or plain text to newsletter tool
 
 ---
 
